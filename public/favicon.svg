@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <circle cx="24" cy="24" r="22" fill="#FCEEED" stroke="#E29BA5" stroke-width="2"/>
+  <!-- Elegant ribbon & film strip motif -->
+  <path d="M16 18C12 18 10 22 13 25C15 27 20 25 24 24C20 23 15 21 16 18Z" fill="#C56D7B"/>
+  <path d="M32 18C36 18 38 22 35 25C33 27 28 25 24 24C28 23 33 21 32 18Z" fill="#C56D7B"/>
+  <circle cx="24" cy="24" r="3.5" fill="#722F37"/>
+  <!-- Ribbon tails -->
+  <path d="M22 26L18 35L22 33L24 27" fill="#8C2D3C"/>
+  <path d="M26 26L30 35L26 33L24 27" fill="#8C2D3C"/>
+  <!-- Subtle star sparkle -->
+  <path d="M24 10L25 13L28 14L25 15L24 18L23 15L20 14L23 13L24 10Z" fill="#E29BA5"/>
+</svg>
