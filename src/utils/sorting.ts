@@ -69,6 +69,14 @@ export function sortMediaItems(items: MediaItem[], mode: SortMode = 'title-asc')
         const timeB = new Date(b.createdAt).getTime();
         return timeB - timeA;
       });
+    case 'status':
+      return list.sort((a, b) => {
+        const statusA = (a.status || '').toLowerCase();
+        const statusB = (b.status || '').toLowerCase();
+        const statusDiff = statusA.localeCompare(statusB, 'pt-BR');
+        if (statusDiff !== 0) return statusDiff;
+        return compareTitles(a.title, b.title);
+      });
     default:
       return list.sort((a, b) => compareTitles(a.title, b.title));
   }

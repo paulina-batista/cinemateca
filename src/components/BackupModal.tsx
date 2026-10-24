@@ -289,7 +289,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({
                   <div className="p-4 rounded-2xl bg-white border border-[#edd1d6] shadow-sm space-y-2">
                     <div className="flex items-center gap-2 text-[#722330] font-semibold text-xs">
                       <FileCheck2 className="w-4 h-4" />
-                      Backup Válido (Cinemateca v{validatedBackup.version})
+                      Backup Válido (IorHub v{validatedBackup.version})
                     </div>
                     <div className="grid grid-cols-2 gap-2 pt-1 text-xs text-[#5c2a33]">
                       <div className="p-2 rounded-xl bg-[#faeded]">

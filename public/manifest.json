@@ -1,7 +1,7 @@
 {
-  "name": "Cinemateca",
-  "short_name": "Cinemateca",
-  "description": "Catálogo pessoal e delicado de filmes e séries assistidos com funcionamento offline e capas locais.",
+  "name": "IorHub",
+  "short_name": "IorHub",
+  "description": "Hub pessoal para organizar filmes, séries, livros e jogos em uma única biblioteca digital.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

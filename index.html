@@ -3,12 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- Viewport estrita para desativar zoom acidental em celulares e usar a largura real do dispositivo -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#fcf7f7" />
-    <meta name="description" content="Ciné Coquette - Catálogo pessoal e delicado de filmes e séries assistidos com armazenamento local offline." />
+    <meta name="description" content="IorHub - Seu hub pessoal para catalogar filmes, séries, livros e jogos com estética delicada e funcionamento offline." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Cinemateca" />
+    <meta name="apple-mobile-web-app-title" content="IorHub" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="manifest" href="/manifest.json" />
 
@@ -20,11 +21,10 @@
       rel="stylesheet"
     />
 
-    <title>Cinemateca • Catálogo de Filmes e Séries</title>
+    <title>IorHub • Biblioteca Digital</title>
   </head>
-  <body class="bg-[#fdf9f9] text-[#3d2429] antialiased selection:bg-[#f3d2d7] selection:text-[#661825]">
+  <body class="bg-[#fdf9f9] text-[#3d2429] antialiased selection:bg-[#f3d2d7] selection:text-[#661825] overflow-x-hidden">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

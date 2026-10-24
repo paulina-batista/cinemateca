@@ -12,7 +12,6 @@ export function useMediaLibrary() {
   const [typeFilter, setTypeFilter] = useState<MediaFilter>('all');
   const [sortMode, setSortMode] = useState<SortMode>('title-asc');
 
-  // Carrega itens do IndexedDB
   const loadItems = useCallback(async () => {
     try {
       setLoading(true);
@@ -32,18 +31,15 @@ export function useMediaLibrary() {
     loadItems();
   }, [loadItems]);
 
-  // Adiciona novo item
   const addItem = useCallback(
     async (dto: CreateMediaDTO): Promise<MediaItem> => {
       const newItem = await mediaRepository.create(dto);
-      // Atualiza a biblioteca imediatamente mantendo a ordenação
       setItems((prev) => [...prev, newItem]);
       return newItem;
     },
     []
   );
 
-  // Atualiza item existente
   const updateItem = useCallback(
     async (id: string, dto: UpdateMediaDTO): Promise<MediaItem> => {
       const updated = await mediaRepository.update(id, dto);
@@ -53,32 +49,27 @@ export function useMediaLibrary() {
     []
   );
 
-  // Remove item
   const deleteItem = useCallback(async (id: string): Promise<void> => {
     await mediaRepository.delete(id);
     setItems((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
-  // Contadores
+  // Contadores por categoria
   const stats = useMemo(() => {
     const total = items.length;
     const movies = items.filter((i) => i.type === 'movie').length;
     const series = items.filter((i) => i.type === 'series').length;
-    return { total, movies, series };
+    const books = items.filter((i) => i.type === 'book').length;
+    const games = items.filter((i) => i.type === 'game').length;
+    return { total, movies, series, books, games };
   }, [items]);
 
-  // Lista filtrada e ordenada (não altera os dados brutos salvos)
   const filteredAndSortedItems = useMemo(() => {
-    // 1. Filtro por tipo
     let list = items;
     if (typeFilter !== 'all') {
       list = list.filter((item) => item.type === typeFilter);
     }
-
-    // 2. Busca por título ou gênero
     list = filterMediaItems(list, searchQuery);
-
-    // 3. Ordenação inteligente (padrão alfabético A-Z tratando artigos)
     return sortMediaItems(list, sortMode);
   }, [items, typeFilter, searchQuery, sortMode]);
 

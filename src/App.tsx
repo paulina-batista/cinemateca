@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Film, Loader2, RefreshCw } from 'lucide-react';
+import { Library, Loader2, RefreshCw } from 'lucide-react';
 import type { CreateMediaDTO, MediaItem, UpdateMediaDTO } from './types/media';
 import { useMediaLibrary } from './hooks/useMediaLibrary';
 import { useToast } from './hooks/useToast';
@@ -69,10 +69,10 @@ export function App() {
       if (editingItem) {
         const updated = await updateItem(editingItem.id, data as UpdateMediaDTO);
         setSelectedItem(updated);
-        showToast('success', 'Registro atualizado', `"${updated.title}" foi atualizado localmente.`);
+        showToast('success', 'Registro atualizado', `"${updated.title}" foi atualizado no IorHub.`);
       } else {
         const created = await addItem(data as CreateMediaDTO);
-        showToast('success', 'Título adicionado', `"${created.title}" foi salvo na sua cinemateca.`);
+        showToast('success', 'Item adicionado', `"${created.title}" foi salvo na sua biblioteca.`);
       }
 
       // Sincroniza em segundo plano com a nuvem se estiver conectado
@@ -89,13 +89,13 @@ export function App() {
   // Confirmação e execução da exclusão
   const handleConfirmDelete = async (id: string) => {
     try {
-      const itemTitle = itemToDelete?.title || 'Título';
+      const itemTitle = itemToDelete?.title || 'Item';
       await deleteItem(id);
       if (selectedItem?.id === id) {
         setSelectedItem(null);
       }
       setItemToDelete(null);
-      showToast('success', 'Registro excluído', `"${itemTitle}" foi removido.`);
+      showToast('success', 'Registro excluído', `"${itemTitle}" foi removido do IorHub.`);
 
       // Sincroniza exclusão com a nuvem
       if (user && isOnline) {
@@ -112,15 +112,17 @@ export function App() {
     if (user && isOnline) {
       syncNow().then(() => reload());
     }
-  }, [user, isOnline]);
+  }, [user, isOnline, syncNow, reload]);
 
   return (
     <div className="min-h-screen min-h-[100dvh] flex flex-col bg-[#fdf8f8] text-[#3d121a]">
-      {/* Header Fixo com Busca, Filtros, Ordenação, Backup, Nuvem e Indicador de Rede */}
+      {/* Header Fixo com Busca, Filtros para 4 Categorias, Ordenação, Backup e Nuvem */}
       <Header
         totalCount={stats.total}
         movieCount={stats.movies}
         seriesCount={stats.series}
+        bookCount={stats.books}
+        gameCount={stats.games}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         activeFilter={typeFilter}
@@ -134,25 +136,25 @@ export function App() {
         isOnline={isOnline}
       />
 
-      {/* Conteúdo Principal */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      {/* Conteúdo Principal — sem transbordamento horizontal */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-2.5 sm:px-6 lg:px-8 py-3.5 sm:py-6">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-28 text-[#c56d7b]">
             <Loader2 className="w-8 h-8 animate-spin mb-3" />
             <p className="text-xs uppercase tracking-widest font-semibold text-[#80555e]">
-              Carregando sua cinemateca...
+              Carregando o IorHub...
             </p>
           </div>
         ) : error ? (
           <div className="max-w-md mx-auto p-6 bg-[#fff2f4] rounded-3xl border border-[#f5b8c2] text-center">
-            <Film className="w-10 h-10 text-[#a32a3d] mx-auto mb-3" />
+            <Library className="w-10 h-10 text-[#a32a3d] mx-auto mb-3" />
             <h2 className="text-lg font-bold font-serif text-[#54101d] mb-1">
               Falha ao carregar catálogo
             </h2>
             <p className="text-xs text-[#703b46] mb-4">{error}</p>
             <button
               onClick={() => reload()}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold bg-[#722330] text-white hover:bg-[#8c2d3c] transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold bg-[#722330] text-white hover:bg-[#8c2d3c] transition-colors cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               Tentar novamente
@@ -240,11 +242,11 @@ export function App() {
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
 
-      {/* Rodapé Elegante com Status de Persistência e Modo Offline */}
-      <footer className="mt-auto border-t border-[#f3d9de] py-5 px-4 text-center text-xs text-[#80555e] bg-white/40">
+      {/* Rodapé Elegante com Identidade IorHub */}
+      <footer className="mt-auto border-t border-[#f3d9de] py-4 px-4 text-center text-xs text-[#80555e] bg-white/40">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px]">
           <p className="font-serif">
-            <span className="font-bold text-[#722330]">Cinemateca</span> • Catálogo Offline-First & Nuvem Supabase
+            <span className="font-bold text-[#722330]">IorHub</span> • Filmes, Séries, Livros & Jogos • Offline & Nuvem
           </p>
           <div className="flex items-center gap-3 text-[#996a74]">
             <div className="flex items-center gap-1.5">

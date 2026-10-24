@@ -6,6 +6,7 @@ export interface BackupMediaItem {
   type: MediaType;
   genre: string;
   rating: number; // 0.5 a 5.0
+  status?: string;
   createdAt: string;
   updatedAt: string;
   notes?: string;
@@ -16,9 +17,9 @@ export interface BackupMediaItem {
 }
 
 export interface CinematecaBackup {
-  format: 'cinemateca-backup';
-  version: 1;
-  appName: 'Cinemateca';
+  format: 'cinemateca-backup' | 'iorhub-backup';
+  version: number;
+  appName: string;
   exportedAt: string; // ISO 8601
   itemCount: number;
   items: BackupMediaItem[];

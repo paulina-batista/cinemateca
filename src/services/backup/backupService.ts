@@ -1,10 +1,11 @@
 import type { BackupMediaItem, CinematecaBackup, RestoreConflictStrategy, RestoreValidationResult } from '../../types/backup';
 import type { MediaItem } from '../../types/media';
+import { DEFAULT_STATUS } from '../../types/media';
 import { base64ToBlob, blobToBase64 } from '../../utils/image';
 import { idbService } from '../db/indexedDB';
 
 /**
- * Serviço responsável por gerar e restaurar backups independentes da biblioteca Cinemateca.
+ * Serviço responsável por gerar e restaurar backups independentes da biblioteca IorHub.
  */
 export class BackupService {
   /**
@@ -19,7 +20,6 @@ export class BackupService {
         coverBase64 = await blobToBase64(item.coverBlob);
       } catch (err) {
         console.warn(`Aviso: falha ao converter capa de "${item.title}" para Base64:`, err);
-        // Cria um fallback mínimo caso a imagem esteja corrompida
         coverBase64 = '';
       }
 
@@ -29,6 +29,7 @@ export class BackupService {
         type: item.type,
         genre: item.genre,
         rating: item.rating,
+        status: item.status || DEFAULT_STATUS[item.type] || 'Assistido',
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
         notes: item.notes || '',
@@ -39,9 +40,9 @@ export class BackupService {
     }
 
     return {
-      format: 'cinemateca-backup',
-      version: 1,
-      appName: 'Cinemateca',
+      format: 'iorhub-backup',
+      version: 2,
+      appName: 'IorHub',
       exportedAt: new Date().toISOString(),
       itemCount: backupItems.length,
       items: backupItems,
@@ -57,7 +58,7 @@ export class BackupService {
     const url = URL.createObjectURL(blob);
 
     const dateStr = new Date().toISOString().split('T')[0];
-    const fileName = `cinemateca_backup_${dateStr}.json`;
+    const fileName = `iorhub_backup_${dateStr}.json`;
 
     const link = document.createElement('a');
     link.href = url;
@@ -73,6 +74,7 @@ export class BackupService {
 
   /**
    * Valida a integridade, esquema e compatibilidade do arquivo de backup antes de aplicar.
+   * Suporta arquivos do formato novo (iorhub-backup v2) e do formato legado (cinemateca-backup v1).
    */
   validateBackupFile(fileContent: string, currentItems: MediaItem[]): RestoreValidationResult {
     let parsed: unknown;
@@ -88,17 +90,10 @@ export class BackupService {
 
     const backup = parsed as Partial<CinematecaBackup>;
 
-    if (backup.format !== 'cinemateca-backup') {
+    if (backup.format !== 'iorhub-backup' && backup.format !== 'cinemateca-backup') {
       return {
         valid: false,
-        error: 'Formato incompatível: este arquivo não é um backup oficial do Cinemateca.',
-      };
-    }
-
-    if (backup.version !== 1) {
-      return {
-        valid: false,
-        error: `Versão ${backup.version} de backup não suportada por esta versão do aplicativo.`,
+        error: 'Formato incompatível: este arquivo não é um backup oficial do IorHub ou Cinemateca.',
       };
     }
 
@@ -108,6 +103,8 @@ export class BackupService {
 
     // Validação de cada registro
     const validRatings = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
+    const validTypes = ['movie', 'series', 'book', 'game'];
+
     for (let i = 0; i < backup.items.length; i++) {
       const item = backup.items[i];
       if (!item.id || !item.title || !item.type || !item.genre) {
@@ -117,10 +114,10 @@ export class BackupService {
         };
       }
 
-      if (item.type !== 'movie' && item.type !== 'series') {
+      if (!validTypes.includes(item.type)) {
         return {
           valid: false,
-          error: `O registro "${item.title}" possui um tipo inválido (${item.type}). Esperado: filme ou série.`,
+          error: `O registro "${item.title}" possui um tipo inválido (${item.type}). Esperado: filme, série, livro ou jogo.`,
         };
       }
 
@@ -175,7 +172,6 @@ export class BackupService {
     const existingMap = new Map<string, MediaItem>(currentItems.map((i) => [i.id, i]));
     const restoredItems: MediaItem[] = [];
 
-    // Converte os itens do backup de volta para o formato de modelo com Blob binário
     for (const bItem of backup.items) {
       const coverBlob = await base64ToBlob(bItem.coverBase64);
 
@@ -185,6 +181,7 @@ export class BackupService {
         type: bItem.type,
         genre: bItem.genre.trim(),
         rating: bItem.rating,
+        status: bItem.status || DEFAULT_STATUS[bItem.type] || 'Assistido',
         coverBlob,
         createdAt: bItem.createdAt || new Date().toISOString(),
         updatedAt: bItem.updatedAt || new Date().toISOString(),
@@ -198,14 +195,12 @@ export class BackupService {
     let updatedCount = 0;
 
     if (strategy === 'replace-all') {
-      // Substitui integralmente a biblioteca usando transação atômica
       await idbService.clearAndInsertAll(restoredItems);
       addedCount = restoredItems.length;
       return { addedCount, updatedCount };
     }
 
     if (strategy === 'merge-overwrite') {
-      // Atualiza registros conflitantes e insere novos registros
       const toPut: MediaItem[] = [];
       for (const item of restoredItems) {
         if (existingMap.has(item.id)) {
@@ -220,7 +215,6 @@ export class BackupService {
     }
 
     if (strategy === 'merge-keep-existing') {
-      // Mantém os existentes inalterados; adiciona apenas os que não existem
       const toAdd: MediaItem[] = [];
       for (const item of restoredItems) {
         if (!existingMap.has(item.id)) {

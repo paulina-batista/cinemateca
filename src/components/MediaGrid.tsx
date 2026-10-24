@@ -34,7 +34,8 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-5 animate-fade-in">
+    /* Exatamente 3 colunas em telas mobile (grid-cols-3), expandindo para 4, 5 e 6 em telas maiores */
+    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-3.5 md:gap-5 animate-fade-in">
       {items.map((item) => (
         <MediaCard
           key={item.id}

@@ -84,11 +84,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenCon
             </div>
             <div>
               <h2 id="auth-modal-title" className="text-lg font-bold font-serif text-[#3d121a]">
-                {mode === 'signin' ? 'Entrar na Cinemateca' : 'Criar sua Conta'}
+                {mode === 'signin' ? 'Entrar no IorHub' : 'Criar sua Conta'}
               </h2>
               <p className="text-xs text-[#704850]">
                 {mode === 'signin'
-                  ? 'Acesse sua conta para sincronizar seus títulos'
+                  ? 'Acesse sua conta para sincronizar seus itens'
                   : 'Cadastre-se para backup na nuvem'}
               </p>
             </div>
@@ -222,7 +222,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenCon
           </div>
 
           <p className="text-[11px] text-[#80555e] leading-relaxed pt-1">
-            ✨ Sua biblioteca local é preservada. Ao entrar, todos os seus filmes e séries serão sincronizados com seu perfil no Supabase.
+            ✨ Sua biblioteca local é preservada. Ao entrar, todos os seus filmes, séries, livros e jogos serão sincronizados com seu perfil no Supabase.
           </p>
 
           {/* Botão de Envio */}
@@ -233,7 +233,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenCon
               className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-2xl text-xs sm:text-sm font-semibold bg-[#722330] text-white hover:bg-[#8c2d3c] disabled:opacity-60 shadow-[0_4px_14px_rgba(114,35,48,0.22)] transition-all cursor-pointer"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {mode === 'signin' ? 'Entrar e Sincronizar' : 'Criar Conta na Cinemateca'}
+              {mode === 'signin' ? 'Entrar e Sincronizar' : 'Criar Conta no IorHub'}
             </button>
           </div>
         </form>

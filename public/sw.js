@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cinemateca-cache-v1';
+const CACHE_NAME = 'iorhub-cache-v2';
 
 const STATIC_ASSETS = [
   '/',
@@ -19,7 +19,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Ativação e limpeza de caches antigos
+// Ativação e limpeza de versões antigas de cache (sem tocar no IndexedDB do usuário)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -40,9 +40,14 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Ignora requisições não-GET ou extensões do navegador
+  // Ignora requisições que não sejam GET ou extensões
   if (request.method !== 'GET') return;
   if (url.protocol.startsWith('chrome-extension')) return;
+
+  // NUNCA cachear chamadas ao Supabase, APIs de autenticação ou endpoints dinâmicos
+  if (url.hostname.includes('supabase.co') || url.pathname.includes('/auth/') || url.pathname.includes('/rest/')) {
+    return;
+  }
 
   // 1. Navegação de Páginas (HTML): Network-First com fallback para o index em cache
   if (request.mode === 'navigate') {
@@ -64,7 +69,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Fontes do Google e Recursos Estáticos (/assets/, favicon, etc): Cache-First com atualização em background
+  // 2. Recursos Estáticos (/assets/, favicon, fontes Google): Stale-While-Revalidate
   const isStaticAsset =
     url.pathname.startsWith('/assets/') ||
     url.hostname.includes('fonts.googleapis.com') ||
@@ -74,33 +79,24 @@ self.addEventListener('fetch', (event) => {
   if (isStaticAsset) {
     event.respondWith(
       caches.match(request).then((cachedResponse) => {
-        if (cachedResponse) {
-          // Busca atualização na rede silenciosamente para manter atualizado
-          fetch(request)
-            .then((networkResponse) => {
-              if (networkResponse && networkResponse.status === 200) {
-                caches.open(CACHE_NAME).then((cache) => cache.put(request, networkResponse));
-              }
-            })
-            .catch(() => {
-              // Em modo offline, a falha do fetch silencioso é esperada e segura
-            });
-          return cachedResponse;
-        }
+        const fetchPromise = fetch(request)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, networkResponse));
+            }
+            return networkResponse;
+          })
+          .catch(() => {
+            // Offline silencioso para assets em segundo plano
+          });
 
-        return fetch(request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const copy = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          }
-          return networkResponse;
-        });
+        return cachedResponse || fetchPromise;
       })
     );
     return;
   }
 
-  // 3. Demais requisições GET padrão: Network com fallback de cache
+  // 3. Demais requisições GET padrão: Network com fallback para cache
   event.respondWith(
     fetch(request)
       .then((response) => {

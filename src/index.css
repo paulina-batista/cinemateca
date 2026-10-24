@@ -33,13 +33,25 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-body {
+html, body {
   margin: 0;
   padding: 0;
   background-color: #fdf8f8;
   color: #3b2026;
   min-height: 100vh;
   min-height: 100dvh;
+  overflow-x: hidden;
+  /* Evita gestos de zoom involuntário e duplo clique de zoom no mobile */
+  touch-action: manipulation;
+}
+
+/* Oculta barra de rolagem mantendo a rolagem ativa */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Custom delicate scrollbar */
@@ -94,7 +106,7 @@ body {
 
 /* Glassmorphism delicacy */
 .glass-header {
-  background: rgba(253, 248, 248, 0.85);
+  background: rgba(253, 248, 248, 0.88);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }

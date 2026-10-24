@@ -1,11 +1,15 @@
 import type { MediaItem } from '../../types/media';
+import { DEFAULT_STATUS } from '../../types/media';
 
 const DB_NAME = 'CineCoquetteDB';
-const DB_VERSION = 1;
+// Incrementar versão para adicionar índice 'status' sem apagar dados existentes
+const DB_VERSION = 2;
 const STORE_NAME = 'media_items';
 
 /**
  * Inicializa e gerencia a conexão com o IndexedDB do navegador.
+ * DB_VERSION 2: adiciona índice 'status' e migra registros antigos
+ * que não possuem status (movie -> 'Assistido', series -> 'Assistindo').
  */
 class IndexedDBService {
   private dbPromise: Promise<IDBDatabase> | null = null;
@@ -24,14 +28,37 @@ class IndexedDBService {
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
+        const tx = (event.target as IDBOpenDBRequest).transaction!;
 
+        // Versão 1 → cria a store pela primeira vez
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
           store.createIndex('title', 'title', { unique: false });
           store.createIndex('type', 'type', { unique: false });
           store.createIndex('rating', 'rating', { unique: false });
           store.createIndex('createdAt', 'createdAt', { unique: false });
+          store.createIndex('status', 'status', { unique: false });
+          return;
         }
+
+        // Versão 2 → adiciona índice 'status' se ainda não existe
+        const store = tx.objectStore(STORE_NAME);
+        if (!store.indexNames.contains('status')) {
+          store.createIndex('status', 'status', { unique: false });
+        }
+
+        // Migração segura: adiciona campo 'status' a registros antigos sem apagar dados
+        const migrateReq = store.openCursor();
+        migrateReq.onsuccess = (e) => {
+          const cursor = (e.target as IDBRequest<IDBCursorWithValue>).result;
+          if (!cursor) return;
+          const record = cursor.value as MediaItem;
+          if (!record.status) {
+            record.status = DEFAULT_STATUS[record.type as keyof typeof DEFAULT_STATUS] ?? 'Assistido';
+            cursor.update(record);
+          }
+          cursor.continue();
+        };
       };
 
       request.onsuccess = () => {
@@ -210,7 +237,6 @@ class IndexedDBService {
 
   /**
    * Substitui integralmente a biblioteca em uma única transação atômica.
-   * Se qualquer item falhar, a transação aborta preservando os dados anteriores.
    */
   public async clearAndInsertAll(items: MediaItem[]): Promise<void> {
     const db = await this.getDB();
@@ -239,4 +265,3 @@ class IndexedDBService {
 }
 
 export const idbService = new IndexedDBService();
-
