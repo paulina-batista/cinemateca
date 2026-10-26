@@ -1,4 +1,4 @@
-# 🎀 Cinemateca • Minha Coleção Pessoal
+# Iorhub • Minha Coleção Pessoal
 
 Aplicativo elegante, delicado e organizado com estética **coquette streaming** para catalogar filmes e séries assistidos, construído com arquitetura *offline-first*, persistência nativa via **IndexedDB**, instalação como **PWA**, sistema de **Backup e Restauração** e **Sincronização na Nuvem via Supabase**.
 
