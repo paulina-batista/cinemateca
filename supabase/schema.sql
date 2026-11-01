@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS public.media_items (
     title TEXT NOT NULL,
     type TEXT NOT NULL CHECK (type IN ('movie', 'series')),
     genre TEXT NOT NULL,
-    rating NUMERIC(2, 1) NOT NULL CHECK (rating >= 0.5 AND rating <= 5.0),
+    rating NUMERIC(2, 1) NOT NULL DEFAULT 0 CHECK (rating >= 0 AND rating <= 5.0),
     cover_url TEXT NOT NULL,
     notes TEXT DEFAULT '',
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
@@ -18,8 +18,34 @@ CREATE TABLE IF NOT EXISTS public.media_items (
     deleted_at TIMESTAMPTZ DEFAULT NULL
 );
 
+-- Migração incremental: atualiza constraint de rating para aceitar 0 (sem apagar dados)
+DO $$
+BEGIN
+    -- Remove a constraint antiga que exigia >= 0.5
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'media_items_rating_check'
+        AND conrelid = 'public.media_items'::regclass
+    ) THEN
+        ALTER TABLE public.media_items DROP CONSTRAINT media_items_rating_check;
+    END IF;
+    -- Cria nova constraint aceitando 0
+    ALTER TABLE public.media_items ADD CONSTRAINT media_items_rating_check
+        CHECK (rating >= 0 AND rating <= 5.0);
+EXCEPTION WHEN OTHERS THEN
+    -- Ignora se a constraint já foi atualizada
+    NULL;
+END $$;
+
 -- Adiciona coluna 'status' caso ainda não exista (idempotente)
 ALTER TABLE public.media_items ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'Assistido';
+
+-- Detalhes adicionais da obra (ano, duração para filmes, temporadas e episódios para séries)
+ALTER TABLE public.media_items ADD COLUMN IF NOT EXISTS year INTEGER DEFAULT NULL;
+ALTER TABLE public.media_items ADD COLUMN IF NOT EXISTS duration TEXT DEFAULT NULL;
+ALTER TABLE public.media_items ADD COLUMN IF NOT EXISTS seasons TEXT DEFAULT NULL;
+ALTER TABLE public.media_items ADD COLUMN IF NOT EXISTS episodes TEXT DEFAULT NULL;
+
 
 -- Índices de alta performance
 CREATE INDEX IF NOT EXISTS idx_media_items_user_id ON public.media_items(user_id);

@@ -111,7 +111,7 @@ export class KinoMediaRepository implements IMediaRepository {
                   }
                 }
 
-                await client.from('media_items').upsert({
+                const upsertData: Record<string, any> = {
                   id: localItem.id,
                   user_id: user.id,
                   title: localItem.title.trim(),
@@ -124,7 +124,19 @@ export class KinoMediaRepository implements IMediaRepository {
                   created_at: localItem.createdAt,
                   updated_at: localItem.updatedAt,
                   deleted_at: null,
+                };
+
+                const { error: upsertErr } = await client.from('media_items').upsert({
+                  ...upsertData,
+                  year: localItem.year ?? null,
+                  duration: localItem.duration ?? null,
+                  seasons: localItem.seasons ?? null,
+                  episodes: localItem.episodes ?? null,
                 });
+
+                if (upsertErr && (upsertErr.code === '42703' || String(upsertErr.message || '').includes('does not exist'))) {
+                  await client.from('media_items').upsert(upsertData);
+                }
               }
             }
 
@@ -191,6 +203,10 @@ export class KinoMediaRepository implements IMediaRepository {
         title: r.title,
         type: r.type as 'movie' | 'series',
         genre: r.genre,
+        year: (r as any).year !== undefined && (r as any).year !== null ? Number((r as any).year) : null,
+        duration: (r as any).duration || null,
+        seasons: (r as any).seasons || null,
+        episodes: (r as any).episodes || null,
         rating: Number(r.rating),
         status: r.status || DEFAULT_STATUS[r.type as keyof typeof DEFAULT_STATUS] || 'Assistido',
         coverBlob,
@@ -242,8 +258,8 @@ export class KinoMediaRepository implements IMediaRepository {
         console.warn('Aviso: falha ao enviar capa para a nuvem:', err);
       }
 
-      // Grava no Supabase
-      const { error: insertError } = await client.from('media_items').insert({
+      // Grava no Supabase com suporte a colunas detalhadas e fallback seguro
+      const baseInsert = {
         id,
         user_id: user.id,
         title: dto.title.trim(),
@@ -256,7 +272,22 @@ export class KinoMediaRepository implements IMediaRepository {
         created_at: now,
         updated_at: now,
         deleted_at: null,
-      });
+      };
+
+      const fullInsert = {
+        ...baseInsert,
+        year: dto.year !== undefined && dto.year !== null ? Number(dto.year) : null,
+        duration: dto.duration?.trim() || null,
+        seasons: dto.seasons !== undefined && dto.seasons !== null && dto.seasons !== '' ? String(dto.seasons) : null,
+        episodes: dto.episodes !== undefined && dto.episodes !== null && dto.episodes !== '' ? String(dto.episodes) : null,
+      };
+
+      let { error: insertError } = await client.from('media_items').insert(fullInsert);
+
+      if (insertError && (insertError.code === '42703' || String(insertError.message || '').includes('does not exist'))) {
+        const retry = await client.from('media_items').insert(baseInsert);
+        insertError = retry.error;
+      }
 
       if (insertError) {
         if (insertError.code === '23505') {
@@ -271,6 +302,10 @@ export class KinoMediaRepository implements IMediaRepository {
       title: dto.title.trim(),
       type: dto.type,
       genre: dto.genre.trim(),
+      year: dto.year !== undefined && dto.year !== null ? Number(dto.year) : null,
+      duration: dto.duration?.trim() || null,
+      seasons: dto.seasons !== undefined && dto.seasons !== null && dto.seasons !== '' ? String(dto.seasons) : null,
+      episodes: dto.episodes !== undefined && dto.episodes !== null && dto.episodes !== '' ? String(dto.episodes) : null,
       rating: dto.rating,
       status: dto.status || DEFAULT_STATUS[dto.type],
       coverBlob: dto.coverBlob,
@@ -329,20 +364,39 @@ export class KinoMediaRepository implements IMediaRepository {
         }
       }
 
-      const { error: updateError } = await client
+      const baseUpdate: Record<string, any> = {
+        title: targetTitle,
+        type: targetType,
+        genre: dto.genre !== undefined ? dto.genre.trim() : existing.genre,
+        rating: dto.rating !== undefined ? dto.rating : existing.rating,
+        status: dto.status !== undefined ? dto.status : existing.status,
+        cover_url: remoteCoverUrl,
+        notes: dto.notes !== undefined ? dto.notes.trim() : existing.notes,
+        updated_at: now,
+      };
+
+      const fullUpdate: Record<string, any> = {
+        ...baseUpdate,
+        year: dto.year !== undefined ? (dto.year !== null ? Number(dto.year) : null) : existing.year,
+        duration: dto.duration !== undefined ? (dto.duration?.trim() || null) : existing.duration,
+        seasons: dto.seasons !== undefined ? (dto.seasons !== null && dto.seasons !== '' ? String(dto.seasons) : null) : existing.seasons,
+        episodes: dto.episodes !== undefined ? (dto.episodes !== null && dto.episodes !== '' ? String(dto.episodes) : null) : existing.episodes,
+      };
+
+      let { error: updateError } = await client
         .from('media_items')
-        .update({
-          title: targetTitle,
-          type: targetType,
-          genre: dto.genre !== undefined ? dto.genre.trim() : existing.genre,
-          rating: dto.rating !== undefined ? dto.rating : existing.rating,
-          status: dto.status !== undefined ? dto.status : existing.status,
-          cover_url: remoteCoverUrl,
-          notes: dto.notes !== undefined ? dto.notes.trim() : existing.notes,
-          updated_at: now,
-        })
+        .update(fullUpdate)
         .eq('id', id)
         .eq('user_id', user.id);
+
+      if (updateError && (updateError.code === '42703' || String(updateError.message || '').includes('does not exist'))) {
+        const retry = await client
+          .from('media_items')
+          .update(baseUpdate)
+          .eq('id', id)
+          .eq('user_id', user.id);
+        updateError = retry.error;
+      }
 
       if (updateError) {
         if (updateError.code === '23505') {
@@ -357,6 +411,10 @@ export class KinoMediaRepository implements IMediaRepository {
       title: targetTitle,
       type: targetType,
       genre: dto.genre !== undefined ? dto.genre.trim() : existing.genre,
+      year: dto.year !== undefined ? (dto.year !== null ? Number(dto.year) : null) : existing.year,
+      duration: dto.duration !== undefined ? (dto.duration?.trim() || null) : existing.duration,
+      seasons: dto.seasons !== undefined ? (dto.seasons !== null && dto.seasons !== '' ? String(dto.seasons) : null) : existing.seasons,
+      episodes: dto.episodes !== undefined ? (dto.episodes !== null && dto.episodes !== '' ? String(dto.episodes) : null) : existing.episodes,
       rating: dto.rating !== undefined ? dto.rating : existing.rating,
       status: dto.status !== undefined ? dto.status : existing.status,
       coverBlob: dto.coverBlob && dto.coverBlob.size > 0 ? dto.coverBlob : existing.coverBlob,

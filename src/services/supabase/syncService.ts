@@ -134,8 +134,7 @@ export class SyncService {
             }
           }
 
-          // Grava/atualiza registro na tabela media_items
-          const { error: upsertError } = await client.from('media_items').upsert({
+          const baseUpsert = {
             id: item.id,
             user_id: user.id,
             title: item.title,
@@ -148,7 +147,20 @@ export class SyncService {
             created_at: item.createdAt,
             updated_at: item.updatedAt,
             deleted_at: null,
+          };
+
+          let { error: upsertError } = await client.from('media_items').upsert({
+            ...baseUpsert,
+            year: item.year ?? null,
+            duration: item.duration ?? null,
+            seasons: item.seasons ?? null,
+            episodes: item.episodes ?? null,
           });
+
+          if (upsertError && (upsertError.code === '42703' || String(upsertError.message || '').includes('does not exist'))) {
+            const retry = await client.from('media_items').upsert(baseUpsert);
+            upsertError = retry.error;
+          }
 
           if (upsertError) {
             console.error(`Erro ao sincronizar item "${item.title}":`, upsertError);
@@ -213,6 +225,10 @@ export class SyncService {
               title: rItem.title,
               type: rItem.type,
               genre: rItem.genre,
+              year: (rItem as any).year !== undefined && (rItem as any).year !== null ? Number((rItem as any).year) : null,
+              duration: (rItem as any).duration || null,
+              seasons: (rItem as any).seasons || null,
+              episodes: (rItem as any).episodes || null,
               rating: Number(rItem.rating),
               status: rItem.status || 'Assistido',
               coverBlob: downloadedBlob,

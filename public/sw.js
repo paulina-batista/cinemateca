@@ -1,12 +1,15 @@
-const CACHE_NAME = 'kino-cache-v3';
+const CACHE_NAME = 'kino-cache-v5';
 
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
+  '/favicon.png',
   '/favicon.svg',
+  '/apple-touch-icon.png',
   '/icon-192.png',
   '/icon-512.png',
+  '/icon-1024.png',
 ];
 
 // Instalação do Service Worker e pré-cache do shell básico

@@ -66,7 +66,7 @@ export const NetworkStatusIndicator: React.FC<NetworkStatusIndicatorProps> = ({ 
             </div>
 
             <p className="text-xs text-[#704850] leading-relaxed mb-4">
-              O Cinemateca é uma Progressive Web App (PWA) projetada com arquitetura local-first. Suas capas e dados ficam salvos diretamente no seu dispositivo.
+              O Kino é uma Progressive Web App (PWA) projetada com arquitetura local-first. Suas capas e dados ficam salvos diretamente no seu dispositivo.
             </p>
 
             <div className="space-y-2.5 text-xs text-[#4a1c24]">

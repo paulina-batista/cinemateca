@@ -49,7 +49,7 @@ export const StarRating: React.FC<StarRatingProps> = ({
       <div
         className="inline-flex items-center gap-1"
         role={readOnly ? 'img' : 'group'}
-        aria-label={`Avaliação: ${rating} de 5 estrelas`}
+        aria-label={rating === 0 ? 'Obra não avaliada' : `Avaliação: ${rating} de 5 estrelas`}
       >
         {[1, 2, 3, 4, 5].map((starIndex) => {
           const halfValue = starIndex - 0.5;
@@ -72,7 +72,7 @@ export const StarRating: React.FC<StarRatingProps> = ({
               {/* Estrela Preenchida Total */}
               {isFull && (
                 <Star
-                  className={`${starDimension.icon} absolute inset-0 text-[#e5a93c] fill-[#e5a93c] drop-shadow-[0_1px_3px_rgba(229,169,60,0.3)] transition-all`}
+                  className={`${starDimension.icon} absolute inset-0 text-[#C99A4E] fill-[#C99A4E] drop-shadow-[0_1px_3px_rgba(201,154,78,0.35)] transition-all`}
                   aria-hidden="true"
                 />
               )}
@@ -81,7 +81,7 @@ export const StarRating: React.FC<StarRatingProps> = ({
               {isHalf && (
                 <div className="absolute inset-0 overflow-hidden w-1/2 pointer-events-none">
                   <Star
-                    className={`${starDimension.icon} text-[#e5a93c] fill-[#e5a93c] drop-shadow-[0_1px_3px_rgba(229,169,60,0.3)]`}
+                    className={`${starDimension.icon} text-[#C99A4E] fill-[#C99A4E] drop-shadow-[0_1px_3px_rgba(201,154,78,0.35)]`}
                     aria-hidden="true"
                   />
                 </div>
@@ -114,8 +114,14 @@ export const StarRating: React.FC<StarRatingProps> = ({
       </div>
 
       {showLabel && (
-        <span className="ml-1 text-xs font-bold text-[#722330]">
-          {formattedValue} <span className="text-[10px] text-[#996a74] font-normal">/ 5</span>
+        <span className="ml-1 text-xs font-bold text-[#781D33]">
+          {rating === 0 ? (
+            <span className="text-[#A88B91] font-normal text-xs">Não avaliado</span>
+          ) : (
+            <>
+              {formattedValue} <span className="text-[10px] text-[#C99A4E] font-semibold">/ 5</span>
+            </>
+          )}
         </span>
       )}
     </div>

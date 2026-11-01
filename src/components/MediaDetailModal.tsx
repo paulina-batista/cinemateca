@@ -119,6 +119,30 @@ export const MediaDetailModal: React.FC<MediaDetailModalProps> = ({
                   {item.genre}
                 </span>
 
+                {/* Badge de Ano */}
+                {item.year && (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-white text-[#1E080D] border border-[#F0D5DA]">
+                    {item.year}
+                  </span>
+                )}
+
+                {/* Badge de Duração (Filme) */}
+                {type === 'movie' && item.duration && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-white text-[#1E080D] border border-[#F0D5DA]">
+                    <Clock className="w-3 h-3 text-[#C99A4E]" />
+                    {item.duration}
+                  </span>
+                )}
+
+                {/* Badge de Temporadas / Episódios (Série) */}
+                {type === 'series' && (item.seasons || item.episodes) && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-white text-[#1E080D] border border-[#F0D5DA]">
+                    {item.seasons && `${item.seasons} ${Number(item.seasons) === 1 ? 'temporada' : 'temporadas'}`}
+                    {item.seasons && item.episodes && ' • '}
+                    {item.episodes && `${item.episodes} eps`}
+                  </span>
+                )}
+
                 {/* Badge de Status */}
                 {item.status && (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#F6EEEE] text-[#781D33] border border-[#F0D5DA]">
@@ -136,8 +160,14 @@ export const MediaDetailModal: React.FC<MediaDetailModalProps> = ({
               <div className="flex items-center gap-2 pt-0.5">
                 <StarRating rating={item.rating} readOnly size="md" />
                 <span className="text-sm font-bold text-[#781D33] flex items-center gap-1">
-                  <Star className="w-3.5 h-3.5 fill-[#C99A4E] text-[#C99A4E]" />
-                  {item.rating.toString().replace('.', ',')} de 5 estrelas
+                  {item.rating > 0 ? (
+                    <>
+                      <Star className="w-3.5 h-3.5 fill-[#C99A4E] text-[#C99A4E]" />
+                      {item.rating.toString().replace('.', ',')} de 5 estrelas
+                    </>
+                  ) : (
+                    <span className="text-xs text-[#A88B91] font-normal">Obra não avaliada</span>
+                  )}
                 </span>
               </div>
 

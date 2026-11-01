@@ -39,6 +39,10 @@ export class BackupService {
         title: item.title,
         type: itemType as MediaType,
         genre: item.genre,
+        year: item.year ?? null,
+        duration: item.duration ?? null,
+        seasons: item.seasons ?? null,
+        episodes: item.episodes ?? null,
         rating: item.rating,
         status: item.status || DEFAULT_STATUS[itemType as MediaType] || 'Assistido',
         createdAt: item.createdAt,
@@ -116,7 +120,7 @@ export class BackupService {
       return { valid: false, error: 'Lista de registros corrompida ou ausente no backup.' };
     }
 
-    const validRatings = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
+    const validRatings = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
     const validTypes = ['movie', 'series', 'book', 'game'];
 
     for (let i = 0; i < backup.items.length; i++) {
@@ -138,7 +142,7 @@ export class BackupService {
       if (!validRatings.includes(item.rating)) {
         return {
           valid: false,
-          error: `O registro "${item.title}" possui nota inválida (${item.rating}). Permitido de 0,5 a 5,0.`,
+          error: `O registro "${item.title}" possui nota inválida (${item.rating}). Permitido de 0 a 5,0.`,
         };
       }
     }
@@ -279,6 +283,10 @@ export class BackupService {
         title: bItem.title,
         type: itemType,
         genre: bItem.genre,
+        year: bItem.year ?? null,
+        duration: bItem.duration ?? null,
+        seasons: bItem.seasons ?? null,
+        episodes: bItem.episodes ?? null,
         rating: bItem.rating,
         status: bItem.status || DEFAULT_STATUS[itemType] || 'Assistido',
         coverBlob,

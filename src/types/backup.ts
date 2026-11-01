@@ -5,7 +5,11 @@ export interface BackupMediaItem {
   title: string;
   type: MediaType;
   genre: string;
-  rating: number; // 0.5 a 5.0
+  year?: number | null;
+  duration?: string | null;
+  seasons?: number | string | null;
+  episodes?: number | string | null;
+  rating: number; // 0 a 5.0
   status?: string;
   createdAt: string;
   updatedAt: string;

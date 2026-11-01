@@ -12,22 +12,25 @@ export const FeaturedHero: React.FC<FeaturedHeroProps> = ({ item, onViewDetails 
   const [imageUrl, setImageUrl] = useState<string>('');
 
   useEffect(() => {
-    let url = '';
+    let blobUrl = '';
     if (item?.coverBlob && item.coverBlob.size > 0) {
       try {
-        url = createBlobUrl(item.coverBlob);
-        setImageUrl(url);
+        blobUrl = createBlobUrl(item.coverBlob);
+        setImageUrl(blobUrl);
       } catch {
-        setImageUrl('');
+        // Fallback para URL remota
+        setImageUrl(item?.remoteCoverUrl || '');
       }
+    } else if (item?.remoteCoverUrl) {
+      setImageUrl(item.remoteCoverUrl);
     } else {
       setImageUrl('');
     }
 
     return () => {
-      if (url) revokeBlobUrl(url);
+      if (blobUrl) revokeBlobUrl(blobUrl);
     };
-  }, [item?.coverBlob]);
+  }, [item?.coverBlob, item?.remoteCoverUrl]);
 
   const createdAt = item?.createdAt;
   const formattedTime = React.useMemo(() => {
@@ -43,25 +46,22 @@ export const FeaturedHero: React.FC<FeaturedHeroProps> = ({ item, onViewDetails 
   if (!item) return null;
 
   const isMovie = item.type === 'movie';
+  const hasRating = item.rating > 0;
 
   return (
-    <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#781D33] via-[#7D1F36] to-[#8C253E] text-white p-4 sm:p-6 mb-6 shadow-[0_12px_36px_rgba(120,29,51,0.28)] border border-[#a2324e]/40 animate-fade-in">
-      {/* Detalhes luminosos sutis estilo Google Stitch */}
+    <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#781D33] via-[#7D1F36] to-[#8C253E] text-white p-4 sm:p-6 shadow-[0_12px_36px_rgba(120,29,51,0.28)] border border-[#a2324e]/40">
+      {/* Decorative glows */}
       <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-[#C99A4E]/15 blur-3xl pointer-events-none" />
       <div className="absolute -left-12 -bottom-12 w-48 h-48 rounded-full bg-[#1E080D]/30 blur-2xl pointer-events-none" />
 
       <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-stretch gap-4 sm:gap-6">
-        {/* Capa em miniatura com moldura requintada */}
+        {/* Cover thumbnail */}
         <div
           onClick={() => onViewDetails(item)}
           className="relative w-24 sm:w-28 shrink-0 aspect-[2/3] rounded-2xl overflow-hidden bg-[#1E080D]/40 border-2 border-[#C99A4E]/50 shadow-lg cursor-pointer group transform transition-transform hover:scale-105"
         >
           {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt={`Capa de ${item.title}`}
-              className="w-full h-full object-cover"
-            />
+            <img src={imageUrl} alt={`Capa de ${item.title}`} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-[#C99A4E]">
               {isMovie ? <Film className="w-8 h-8 opacity-60" /> : <Tv className="w-8 h-8 opacity-60" />}
@@ -72,49 +72,44 @@ export const FeaturedHero: React.FC<FeaturedHeroProps> = ({ item, onViewDetails 
           </div>
         </div>
 
-        {/* Informações de Destaque */}
+        {/* Details */}
         <div className="flex-1 flex flex-col justify-between text-center sm:text-left min-w-0">
           <div>
-            {/* Tag de Último Adicionado */}
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1.5">
               <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-bold tracking-wider uppercase bg-[#C99A4E] text-[#1E080D] shadow-sm">
                 <Sparkles className="w-3 h-3 fill-[#1E080D]" />
                 Último Adicionado
               </span>
-              <span className="text-xs text-[#f7dede] font-light">
-                • {formattedTime}
-              </span>
+              <span className="text-xs text-[#f7dede] font-light">• {formattedTime}</span>
             </div>
 
-            {/* Título e Avaliação */}
             <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 mb-1">
               <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold font-serif text-white tracking-tight line-clamp-1">
                 {item.title}
               </h2>
-              <div className="inline-flex items-center justify-center gap-1 text-[#C99A4E] font-bold text-sm sm:text-base self-center sm:self-auto shrink-0 bg-black/20 px-2 py-0.5 rounded-full">
-                <Star className="w-4 h-4 fill-[#C99A4E]" />
-                <span>{item.rating.toFixed(1).replace('.', ',')}</span>
-              </div>
+              {hasRating && (
+                <div className="inline-flex items-center justify-center gap-1 text-[#C99A4E] font-bold text-sm sm:text-base self-center sm:self-auto shrink-0 bg-black/20 px-2 py-0.5 rounded-full">
+                  <Star className="w-4 h-4 fill-[#C99A4E]" />
+                  <span>{item.rating.toFixed(1).replace('.', ',')}</span>
+                </div>
+              )}
             </div>
 
-            {/* Metadados: Categoria, Gênero, Status */}
             <p className="text-xs sm:text-sm text-[#f6d7dd] font-medium mb-2">
-              {isMovie ? 'Filme' : 'Série'} • <span className="text-[#C99A4E]">{item.genre}</span> • Status: {item.status}
+              {isMovie ? 'Filme' : 'Série'} • <span className="text-[#C99A4E]">{item.genre}</span> • {item.status}
             </p>
 
-            {/* Anotações ou Sinopse */}
             {item.notes ? (
               <p className="text-xs text-[#fae8eb]/90 line-clamp-2 italic leading-relaxed max-w-2xl font-light">
                 "{item.notes}"
               </p>
             ) : (
               <p className="text-xs text-[#fae8eb]/70 italic font-light">
-                Recém-adicionado à sua coleção cinematográfica pessoal no Kino.
+                Recém-adicionado à sua curadoria pessoal Kino.
               </p>
             )}
           </div>
 
-          {/* Botão de Ação: Ver Ficha Completa */}
           <div className="mt-3 sm:mt-2 flex items-center justify-center sm:justify-start gap-3">
             <button
               onClick={() => onViewDetails(item)}

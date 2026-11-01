@@ -1,5 +1,5 @@
 import React from 'react';
-import { Film, Tv, Search, Clapperboard, X, ArrowDownAZ, Archive, UserCheck, User } from 'lucide-react';
+import { Film, Tv, Search, X, ArrowDownAZ, Archive, UserCheck, User } from 'lucide-react';
 import type { MediaFilter, SortMode } from '../types/media';
 
 interface HeaderProps {
@@ -40,8 +40,8 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 sm:gap-3.5">
             {/* Emblema Oficial Kino */}
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-[#781D33] to-[#8C253E] border border-[#C99A4E]/40 flex items-center justify-center text-white shadow-sm shrink-0">
-              <Clapperboard className="w-5 h-5 text-[#C99A4E]" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-[#781D33] border border-[#C99A4E]/40 flex items-center justify-center text-white shadow-sm shrink-0 overflow-hidden">
+              <img src="/favicon.png" alt="Kino" className="w-full h-full object-cover" />
             </div>
 
             <div>
