@@ -5,7 +5,7 @@ import { storageService } from './storageService';
 
 type SyncListener = (state: SyncState) => void;
 
-const LAST_SYNC_KEY = 'cinemateca_last_sync_timestamp';
+const LAST_SYNC_KEY = 'kino_last_sync_timestamp';
 
 export class SyncService {
   private listeners = new Set<SyncListener>();

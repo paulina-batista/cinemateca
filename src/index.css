@@ -4,26 +4,18 @@
   --font-serif: 'Playfair Display', Georgia, serif;
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
-  --color-blush-50: #fdf8f8;
-  --color-blush-100: #faeded;
-  --color-blush-200: #f5d9dd;
-  --color-blush-300: #eebec5;
-  --color-blush-400: #e29ba6;
-  --color-blush-500: #d47b89;
+  /* Paleta Oficial Kino */
+  --color-kino-primary: #781D33;
+  --color-kino-secondary: #C99A4E;
+  --color-kino-tertiary: #8C253E;
+  --color-kino-neutral: #1E080D;
 
-  --color-rose-muted: #c56d7b;
-  --color-rose-dark: #a84e5d;
-
-  --color-wine-50: #fbf2f4;
-  --color-wine-100: #f5dfe3;
-  --color-wine-200: #ecc4cb;
-  --color-wine-600: #8c2d3c;
-  --color-wine-700: #722330;
-  --color-wine-800: #591924;
-  --color-wine-900: #3f1019;
-
-  --color-cream: #fffaf8;
-  --color-card-bg: #ffffff;
+  /* Variações de Superfície e Contraste */
+  --color-kino-bg: #FBF6F6;
+  --color-kino-surface: #FFFDFD;
+  --color-kino-muted: #F6EEEE;
+  --color-kino-border: #F0D5DA;
+  --color-kino-gold-light: #F9EED9;
 }
 
 :root {
@@ -31,17 +23,21 @@
   color-scheme: light;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  --primary: #781D33;
+  --secondary: #C99A4E;
+  --tertiary: #8C253E;
+  --neutral: #1E080D;
 }
 
 html, body {
   margin: 0;
   padding: 0;
-  background-color: #fdf8f8;
-  color: #3b2026;
+  background-color: #FBF6F6;
+  color: #1E080D;
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
-  /* Evita gestos de zoom involuntário e duplo clique de zoom no mobile */
   touch-action: manipulation;
 }
 
@@ -61,19 +57,19 @@ html, body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #faeded;
+  background: #F6EEEE;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #e29ba6;
+  background: #E5BDC5;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #c56d7b;
+  background: #781D33;
 }
 
-/* Coquette smooth animations */
+/* Animações fluidas */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -96,6 +92,12 @@ html, body {
   }
 }
 
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
 .animate-fade-in {
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -104,15 +106,19 @@ html, body {
   animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Glassmorphism delicacy */
+.animate-shake {
+  animation: shake 0.35s ease-in-out;
+}
+
+/* Glassmorphism Kino */
 .glass-header {
-  background: rgba(253, 248, 248, 0.88);
+  background: rgba(251, 246, 246, 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 253, 253, 0.95);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }

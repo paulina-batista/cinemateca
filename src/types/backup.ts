@@ -16,14 +16,16 @@ export interface BackupMediaItem {
   coverBase64: string;
 }
 
-export interface CinematecaBackup {
-  format: 'cinemateca-backup' | 'iorhub-backup';
+export interface KinoBackup {
+  format: 'kino-backup' | 'iorhub-backup' | 'cinemateca-backup';
   version: number;
   appName: string;
   exportedAt: string; // ISO 8601
   itemCount: number;
   items: BackupMediaItem[];
 }
+
+export type CinematecaBackup = KinoBackup;
 
 export type RestoreConflictStrategy =
   | 'merge-keep-existing' // Mantém o que já tem com o mesmo ID, só adiciona novos
@@ -40,6 +42,6 @@ export interface RestorePreviewStats {
 export interface RestoreValidationResult {
   valid: boolean;
   error?: string;
-  backup?: CinematecaBackup;
+  backup?: KinoBackup;
   stats?: RestorePreviewStats;
 }

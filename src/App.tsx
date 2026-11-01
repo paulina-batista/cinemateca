@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Library, Loader2, RefreshCw } from 'lucide-react';
+import { Clapperboard, Loader2, RefreshCw } from 'lucide-react';
 import type { CreateMediaDTO, MediaItem, UpdateMediaDTO } from './types/media';
 import { useMediaLibrary } from './hooks/useMediaLibrary';
 import { useToast } from './hooks/useToast';
-import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { useAuth } from './hooks/useAuth';
 import { useSync } from './hooks/useSync';
 import { Header } from './components/Header';
+import { FeaturedHero } from './components/FeaturedHero';
 import { MediaGrid } from './components/MediaGrid';
 import { MediaDetailModal } from './components/MediaDetailModal';
 import { MediaFormModal } from './components/MediaFormModal';
@@ -18,6 +18,7 @@ import { AuthModal } from './components/AuthModal';
 import { SupabaseConfigModal } from './components/SupabaseConfigModal';
 
 export function App() {
+  const { user } = useAuth();
   const {
     items,
     rawItems,
@@ -34,11 +35,9 @@ export function App() {
     updateItem,
     deleteItem,
     reload,
-  } = useMediaLibrary();
+  } = useMediaLibrary(user);
 
   const { toasts, showToast, removeToast } = useToast();
-  const { isOnline } = useNetworkStatus();
-  const { user } = useAuth();
   const { syncNow } = useSync();
 
   // Modais e Estados de Seleção
@@ -69,18 +68,18 @@ export function App() {
       if (editingItem) {
         const updated = await updateItem(editingItem.id, data as UpdateMediaDTO);
         setSelectedItem(updated);
-        showToast('success', 'Registro atualizado', `"${updated.title}" foi atualizado no IorHub.`);
+        showToast('success', 'Título atualizado', `"${updated.title}" foi atualizado no Kino.`);
       } else {
         const created = await addItem(data as CreateMediaDTO);
-        showToast('success', 'Item adicionado', `"${created.title}" foi salvo na sua biblioteca.`);
+        showToast('success', 'Título adicionado', `"${created.title}" foi salvo na sua curadoria Kino.`);
       }
 
-      // Sincroniza em segundo plano com a nuvem se estiver conectado
-      if (user && isOnline) {
+      // Sincroniza em segundo plano se o usuário estiver autenticado
+      if (user) {
         syncNow().then(() => reload());
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao persistir no IndexedDB.';
+      const msg = err instanceof Error ? err.message : 'Erro ao persistir o título.';
       showToast('error', 'Falha ao salvar', msg);
       throw err;
     }
@@ -89,16 +88,15 @@ export function App() {
   // Confirmação e execução da exclusão
   const handleConfirmDelete = async (id: string) => {
     try {
-      const itemTitle = itemToDelete?.title || 'Item';
+      const itemTitle = itemToDelete?.title || 'Título';
       await deleteItem(id);
       if (selectedItem?.id === id) {
         setSelectedItem(null);
       }
       setItemToDelete(null);
-      showToast('success', 'Registro excluído', `"${itemTitle}" foi removido do IorHub.`);
+      showToast('success', 'Título removido', `"${itemTitle}" foi removido do Kino.`);
 
-      // Sincroniza exclusão com a nuvem
-      if (user && isOnline) {
+      if (user) {
         syncNow().then(() => reload());
       }
     } catch (err: unknown) {
@@ -107,76 +105,85 @@ export function App() {
     }
   };
 
-  // Sincronização periódica ou ao recarregar a página
+  // Sincronização automática na montagem e mudança de usuário
   useEffect(() => {
-    if (user && isOnline) {
+    if (user) {
       syncNow().then(() => reload());
     }
-  }, [user, isOnline, syncNow, reload]);
+  }, [user, syncNow, reload]);
 
   return (
-    <div className="min-h-screen min-h-[100dvh] flex flex-col bg-[#fdf8f8] text-[#3d121a]">
-      {/* Header Fixo com Busca, Filtros para 4 Categorias, Ordenação, Backup e Nuvem */}
+    <div className="min-h-screen min-h-[100dvh] flex flex-col bg-[#FBF6F6] text-[#1E080D]">
+      {/* Header Fixo com Identidade Kino, Busca, Filtros (Todos, Filmes, Séries), Ordenação, Backup e Usuário */}
       <Header
         totalCount={stats.total}
         movieCount={stats.movies}
         seriesCount={stats.series}
-        bookCount={stats.books}
-        gameCount={stats.games}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         activeFilter={typeFilter}
         onFilterChange={setTypeFilter}
         sortMode={sortMode}
         onSortChange={setSortMode}
-        onOpenCreateModal={handleOpenCreate}
         onOpenBackupModal={() => setBackupModalOpen(true)}
         onOpenAuthModal={() => setAuthModalOpen(true)}
-        onOpenConfigModal={() => setConfigModalOpen(true)}
-        isOnline={isOnline}
+        isAuthenticated={Boolean(user)}
+        userEmail={user?.email}
       />
 
-      {/* Conteúdo Principal — sem transbordamento horizontal */}
+      {/* Conteúdo Principal */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-2.5 sm:px-6 lg:px-8 py-3.5 sm:py-6">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-28 text-[#c56d7b]">
-            <Loader2 className="w-8 h-8 animate-spin mb-3" />
-            <p className="text-xs uppercase tracking-widest font-semibold text-[#80555e]">
-              Carregando o IorHub...
+          <div className="flex flex-col items-center justify-center py-28 text-[#781D33]">
+            <Loader2 className="w-8 h-8 animate-spin mb-3 text-[#781D33]" />
+            <p className="text-xs uppercase tracking-widest font-semibold text-[#781D33]/80">
+              Carregando Kino...
             </p>
           </div>
         ) : error ? (
-          <div className="max-w-md mx-auto p-6 bg-[#fff2f4] rounded-3xl border border-[#f5b8c2] text-center">
-            <Library className="w-10 h-10 text-[#a32a3d] mx-auto mb-3" />
-            <h2 className="text-lg font-bold font-serif text-[#54101d] mb-1">
+          <div className="max-w-md mx-auto p-6 bg-[#FFF2F4] rounded-3xl border border-[#F0B8C2] text-center">
+            <Clapperboard className="w-10 h-10 text-[#781D33] mx-auto mb-3" />
+            <h2 className="text-lg font-bold font-serif text-[#1E080D] mb-1">
               Falha ao carregar catálogo
             </h2>
-            <p className="text-xs text-[#703b46] mb-4">{error}</p>
+            <p className="text-xs text-[#781D33]/80 mb-4">{error}</p>
             <button
               onClick={() => reload()}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold bg-[#722330] text-white hover:bg-[#8c2d3c] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full text-xs font-semibold bg-[#781D33] text-white hover:bg-[#8C253E] transition-colors cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               Tentar novamente
             </button>
           </div>
         ) : (
-          <MediaGrid
-            items={items}
-            totalRawItems={rawItems.length}
-            isSearchActive={searchQuery.trim().length > 0}
-            searchQuery={searchQuery}
-            onClearSearch={() => {
-              setSearchQuery('');
-              setTypeFilter('all');
-            }}
-            onSelectItem={(item) => setSelectedItem(item)}
-            onAddNew={handleOpenCreate}
-          />
+          <div className="space-y-4 sm:space-y-6">
+            {/* Destaque para o Último Título Adicionado (Google Stitch style) */}
+            {stats.latestAdded && !searchQuery.trim() && typeFilter === 'all' && (
+              <FeaturedHero
+                item={stats.latestAdded}
+                onViewDetails={(item) => setSelectedItem(item)}
+              />
+            )}
+
+            {/* Grid de Cartazes — 3 colunas rigorosas no celular, até 6 no desktop */}
+            <MediaGrid
+              items={items}
+              totalRawItems={rawItems.length}
+              isSearchActive={searchQuery.trim().length > 0}
+              searchQuery={searchQuery}
+              latestAddedId={stats.latestAdded?.id}
+              onClearSearch={() => {
+                setSearchQuery('');
+                setTypeFilter('all');
+              }}
+              onSelectItem={(item) => setSelectedItem(item)}
+              onAddNew={handleOpenCreate}
+            />
+          </div>
         )}
       </main>
 
-      {/* Botão Flutuante Mobile (+) */}
+      {/* Botão Flutuante Único (+) no Canto Inferior Direito (Mobile e Desktop) */}
       <FloatingActionButton onClick={handleOpenCreate} />
 
       {/* Modal de Detalhes */}
@@ -189,10 +196,11 @@ export function App() {
         }}
       />
 
-      {/* Modal de Cadastro e Edição */}
+      {/* Modal de Cadastro e Edição com Proteção contra Duplicatas */}
       <MediaFormModal
         isOpen={formModalOpen}
         initialData={editingItem}
+        existingItems={rawItems}
         onClose={() => {
           setFormModalOpen(false);
           setEditingItem(null);
@@ -215,7 +223,7 @@ export function App() {
         currentItems={rawItems}
         onRestoreSuccess={async () => {
           await reload();
-          if (user && isOnline) {
+          if (user) {
             await syncNow();
           }
           showToast('success', 'Restauração Concluída', 'Biblioteca recarregada com sucesso.');
@@ -242,19 +250,20 @@ export function App() {
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
 
-      {/* Rodapé Elegante com Identidade IorHub */}
-      <footer className="mt-auto border-t border-[#f3d9de] py-4 px-4 text-center text-xs text-[#80555e] bg-white/40">
+      {/* Rodapé Oficial Kino — Sem indicadores de conexão */}
+      <footer className="mt-auto border-t border-[#F0D5DA] py-4 px-4 text-xs text-[#781D33]/80 bg-[#FBF6F6]">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px]">
           <p className="font-serif">
-            <span className="font-bold text-[#722330]">IorHub</span> • Filmes, Séries, Livros & Jogos • Offline & Nuvem
+            <span className="font-bold text-[#781D33]">Kino</span> — Curadoria pessoal de arte e mídias
           </p>
-          <div className="flex items-center gap-3 text-[#996a74]">
-            <div className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-              <span>{isOnline ? 'Conectado à Internet' : 'Modo Offline Ativo'}</span>
-            </div>
-            <span>•</span>
-            <span>IndexedDB Local + Supabase Cloud</span>
+          <div className="flex items-center gap-3 text-[#781D33]/70">
+            <span>Total no acervo: <strong className="text-[#1E080D] font-bold">{stats.total}</strong> {stats.total === 1 ? 'título' : 'títulos'}</span>
+            {stats.latestAdded && (
+              <>
+                <span>•</span>
+                <span>Último adicionado: <strong className="text-[#781D33] font-semibold">{stats.latestAdded.title}</strong></span>
+              </>
+            )}
           </div>
         </div>
       </footer>

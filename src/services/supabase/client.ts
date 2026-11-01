@@ -1,14 +1,18 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const STORAGE_KEY_URL = 'cinemateca_supabase_url';
-const STORAGE_KEY_ANON = 'cinemateca_supabase_anon_key';
+const STORAGE_KEY_URL = 'kino_supabase_url';
+const STORAGE_KEY_ANON = 'kino_supabase_anon_key';
+
+// Credenciais permanentes do projeto Supabase Kino
+export const DEFAULT_SUPABASE_URL = 'https://jcfxgcynetnojlvphkgt.supabase.co';
+export const DEFAULT_SUPABASE_KEY = 'sb_publishable_7RhpQjMWhsA3n5WwPG7kEA_HU5G59Wr';
 
 let cachedClient: SupabaseClient | null = null;
 let currentUrl: string = '';
 let currentKey: string = '';
 
 /**
- * Obtém as credenciais ativas do Supabase (.env ou configuradas pelo usuário na interface).
+ * Obtém as credenciais ativas do Supabase (Vite .env, localStorage ou padrão oficial).
  */
 export function getSupabaseCredentials(): { url: string; anonKey: string } {
   const envUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -17,14 +21,14 @@ export function getSupabaseCredentials(): { url: string; anonKey: string } {
   const storedUrl = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_URL) || '' : '';
   const storedKey = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_ANON) || '' : '';
 
-  const url = (storedUrl || envUrl).trim();
-  const anonKey = (storedKey || envKey).trim();
+  const url = (storedUrl || envUrl || DEFAULT_SUPABASE_URL).trim();
+  const anonKey = (storedKey || envKey || DEFAULT_SUPABASE_KEY).trim();
 
   return { url, anonKey };
 }
 
 /**
- * Verifica se as credenciais configuradas são válidas e não são placeholders.
+ * Verifica se as credenciais configuradas são válidas.
  */
 export function isSupabaseConfigured(): boolean {
   const { url, anonKey } = getSupabaseCredentials();
@@ -40,7 +44,7 @@ export function isSupabaseConfigured(): boolean {
 }
 
 /**
- * Salva as credenciais fornecidas pelo usuário na interface local.
+ * Salva credenciais personalizadas salvas localmente se necessário.
  */
 export function setSupabaseCredentials(url: string, anonKey: string): void {
   const cleanUrl = url.trim();
@@ -51,12 +55,11 @@ export function setSupabaseCredentials(url: string, anonKey: string): void {
     localStorage.setItem(STORAGE_KEY_ANON, cleanKey);
   }
 
-  // Reseta o cliente em cache para recriar com os novos dados
   cachedClient = null;
 }
 
 /**
- * Remove credenciais personalizadas salvas localmente.
+ * Remove credenciais personalizadas do armazenamento local.
  */
 export function clearSupabaseCredentials(): void {
   if (typeof window !== 'undefined') {
@@ -67,7 +70,7 @@ export function clearSupabaseCredentials(): void {
 }
 
 /**
- * Retorna a instância do cliente Supabase ou null caso ainda não configurado.
+ * Retorna a instância única do cliente Supabase configurada para o Kino.
  */
 export function getSupabaseClient(): SupabaseClient | null {
   if (!isSupabaseConfigured()) {
@@ -86,6 +89,7 @@ export function getSupabaseClient(): SupabaseClient | null {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
+        storageKey: 'kino_auth_session',
       },
     });
     currentUrl = url;

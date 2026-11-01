@@ -1,85 +1,85 @@
-# Iorhub • Minha Coleção Pessoal
+# 🎬 Kino — Curadoria Pessoal de Arte e Mídias
 
-Aplicativo elegante, delicado e organizado com estética **coquette streaming** para catalogar filmes e séries assistidos, construído com arquitetura *offline-first*, persistência nativa via **IndexedDB**, instalação como **PWA**, sistema de **Backup e Restauração** e **Sincronização na Nuvem via Supabase**.
+Aplicação cinematográfica e refinada para catalogar filmes e séries, com estética inspirada no **Google Stitch**, sincronização em nuvem via **Supabase**, prevenção nativa de títulos duplicados, cartazes em alta resolução e experiência responsiva otimizada para celular (3 cartazes por linha) e desktop.
+
+---
+
+## 🎨 Identidade Visual e Paleta Oficial
+
+O Kino adota uma paleta exclusiva e sofisticada:
+
+| Token | Nome | Hexadecimal | Uso Principal |
+| :--- | :--- | :--- | :--- |
+| **Primary** | Vinho profundo | `#781D33` | Identidade principal, botões de ação, abas ativas e etiqueta "Último adicionado" |
+| **Secondary** | Dourado | `#C99A4E` | Detalhes nobres, estrelas de avaliação, ícones destacados e bordas especiais |
+| **Tertiary** | Vinho rosado | `#8C253E` | Estados de hover, botões secundários e variações de contraste |
+| **Neutral** | Bordô quase preto | `#1E080D` | Tipografia principal, títulos, contrastes escuros |
 
 ---
 
 ## 🛠️ Stack Tecnológica
 
-- **Vite** (bundler ultrarrápido com hot reload)
-- **React 19** + **TypeScript** (tipagem estrita e componentes modulares)
-- **Tailwind CSS v4** (sistema de design com paleta blush, rosa antigo e vinho suave)
-- **IndexedDB Nativo** (armazenamento local offline-first para registros e capas binárias `Blob`)
-- **Supabase** (`@supabase/supabase-js` para autenticação por e-mail, banco de dados PostgreSQL com RLS e Storage de capas)
-- **PWA & Service Worker** (instalação no celular e desktop com cache de recursos estáticos e fontes)
-- **Lucide React** (iconografia consistente)
+- **Vite 8** (bundler de alta performance)
+- **React 19** + **TypeScript** (tipagem estrita e arquitetura componentizada)
+- **Tailwind CSS v4** (sistema de design baseado em tokens Kino)
+- **Supabase** (`@supabase/supabase-js`)
+  - Banco de Dados PostgreSQL com políticas RLS (Row Level Security)
+  - Realtime subscriptions para sincronização entre computador e celular
+  - Storage resiliente para capas (armazenamento em nuvem com fallback Base64)
+- **IndexedDB Nativo** (cache local de alta performance com migração automática na autenticação)
+- **PWA & Service Worker** (instalação nativa em Android e iOS)
+- **Lucide React** (iconografia minimalista)
 
 ---
 
-## ✨ Funcionalidades
+## ✨ Recursos Principais
 
-### 1. Autenticação e Nuvem Supabase
-- **Login por E-mail e Senha**: Cadastro de novos usuários e login integrado com Supabase Auth.
-- **Banco de Dados PostgreSQL**: Tabela `media_items` com políticas de segurança em nível de linha (Row Level Security - RLS), garantindo que cada usuário acesse apenas seus próprios dados.
-- **Armazenamento de Capas na Nuvem**: Upload automático de capas locais (`Blob`) para o bucket `media-covers` no Supabase Storage.
-- **Configuração Fácil**: Suporte a variáveis de ambiente (`.env`) e tela intuitiva no aplicativo para salvar a URL e a Chave Anon diretamente pelo navegador.
-- **Script de Migração**: Arquivo [supabase/schema.sql](file:///C:/Users/silva/.gemini/antigravity-ide/scratch/cinemateca/supabase/schema.sql) pronto para ser executado no SQL Editor do Supabase.
+### 1. Destaque Especial para o "Último Adicionado"
+- Banner em destaque (hero card) estilizado com a cor **Primary (`#781D33`)** e detalhes dourados.
+- Identificação visual elegante indicando o título mais recente adicionado à biblioteca.
+- Atualização em tempo real baseada na data de criação original (`createdAt`).
 
-### 2. Sincronização Bidirecional Offline-First
-- **Trabalho Offline Ininterrupto**: O catálogo funciona 100% mesmo sem internet ou sem login. Registros e capas são salvos localmente no IndexedDB.
-- **Sincronização Automática ao Reconectar**: Ao restabelecer a conexão com a internet, o aplicativo detecta o evento de rede e envia alterações pendentes para o Supabase.
-- **Sincronização de Exclusões**: Itens excluídos offline são marcados para remoção na nuvem na próxima conexão (soft delete local -> hard delete remoto).
-- **Download para Cache Offline**: Ao sincronizar títulos da nuvem para o aparelho, as capas são baixadas como `Blob` binário e gravadas no IndexedDB para continuarem disponíveis sem internet.
-- **Selo de Status**: Indicador visual dinâmico com contagem de pendências, status de envio e botão de sincronização manual.
+### 2. Prevenção Rigorosa contra Títulos Duplicados
+- **Camada Frontend**: Comparação *case-insensitive* e remoção de espaços nas extremidades (*trim*). Bloqueia cadastros duplicados com a mensagem amigável: *"Este título já está na sua biblioteca."*
+- **Camada Banco de Dados (Supabase)**: Índice único condicional `uq_media_items_user_type_title` por usuário, tipo e título normalizado (`LOWER(TRIM(title))`).
 
-### 3. Avaliações com Meias Estrelas (0,5 a 5,0)
-- Escala completa permitida: `0,5`, `1,0`, `1,5`, `2,0`, `2,5`, `3,0`, `3,5`, `4,0`, `4,5` e `5,0` estrelas.
-- Seleção intuitiva com divisão visual das estrelas (metade esquerda e direita) sensíveis ao toque e clique.
-- Botões de passo fino `[ -0,5 ]` e `[ +0,5 ]` para máxima facilidade em telas de smartphones.
-- Renderização visual precisa de estrelas cheias, meias estrelas e estrelas vazias nos cards, detalhes e formulários.
-- Persistência decimal exata no IndexedDB e Supabase sem arredondamentos indesejados.
+### 3. Sincronização Unificada (Celular ↔ Computador)
+- O Supabase é a fonte central da biblioteca: títulos adicionados no celular aparecem imediatamente no computador e vice-versa.
+- Migração automática e segura de dados locais existentes no celular para o Supabase no momento do login, sem duplicatas e sem sobrescrever registros remotos.
+- Realtime listeners para atualização instantânea sem necessidade de recarregar a página.
 
-### 4. PWA e Funcionamento 100% Offline
-- **Service Worker (`public/sw.js`)**: Cache estático com estratégia *Network-First com fallback de cache* para páginas e *Cache-First* para assets e fontes.
-- **Manifest PWA (`public/manifest.json`)**: Configurado com nome "Cinemateca", cores do tema `#fdf8f8`, ícones 192x192 e 512x512 em modo `standalone`.
-- **Indicador de Conexão**: Badge discreto no topo indicando status `Conectado à Internet` ou `Modo Offline`, com explicação interativa sobre o funcionamento local.
+### 4. Responsividade Mobile-First
+- **Celular**: Grade estrita de **3 cartazes por linha**, proporção 2:3 perfeita para capas, textos legíveis e respeito às áreas seguras (*safe-area-insets*).
+- **Desktop**: Grid expandido com até 6 colunas, aproveitando o espaço de forma cinematográfica.
+- **Botão Flutuante Único (+)**: Acesso rápido no canto inferior direito para adicionar títulos em qualquer tela.
 
-### 5. Sistema de Backup e Restauração
-- Acessível pelo botão **"Backup"** no cabeçalho.
-- **Exportar Backup**: Gera um arquivo JSON independente contendo todos os registros e as capas convertidas em Base64 Data URLs.
-- **Restaurar Backup**: Validação rigorosa de integridade, contagem de novos registros, detecção de conflitos de ID e 3 políticas de mesclagem selecionáveis.
+### 5. Exclusivo para Filmes e Séries
+- Interface focada e enxuta, sem distrações de livros ou jogos.
+- Registros legados preservados de forma íntegra no banco de dados.
 
 ---
 
-## ⚡ Como Configurar o Supabase
+## ⚡ Configuração do Supabase
 
-1. Crie um projeto gratuito no [Supabase](https://supabase.com).
-2. No painel do seu projeto, acesse **SQL Editor** e cole o conteúdo do arquivo [supabase/schema.sql](file:///C:/Users/silva/.gemini/antigravity-ide/scratch/cinemateca/supabase/schema.sql). Clique em **Run**.
-3. Obtenha as credenciais em **Project Settings > API**:
-   - `Project URL`
-   - `anon public key`
-4. Crie um arquivo `.env` na raiz da pasta `cinemateca` (baseado no `.env.example`):
-   ```env
-   VITE_SUPABASE_URL=https://seu-projeto.supabase.co
-   VITE_SUPABASE_ANON_KEY=sua-chave-anon-publica-aqui
-   ```
-   *Alternativamente, você pode clicar em **"Entrar na Nuvem" > "Configurar credenciais"** diretamente na interface do aplicativo.*
+O projeto vem com credenciais pré-configuradas de forma permanente no cliente frontend. Caso queira configurar seu próprio banco de dados, aplique a migração em [supabase/migrations/20261101_kino_schema.sql](file:///C:/Users/silva/.gemini/antigravity-ide/scratch/cinemateca/supabase/migrations/20261101_kino_schema.sql).
 
----
-
-## 🚀 Como Executar o Projeto
-
-No terminal dentro da pasta `cinemateca`:
-
-```bash
-# 1. Iniciar servidor de desenvolvimento local
-npm run dev
-
-# 2. Compilar e validar tipos para produção
-npm run build
-
-# 3. Pré-visualizar a versão compilada
-npm run preview
+### Variáveis de Ambiente (.env)
+```env
+VITE_SUPABASE_URL=https://jcfxgcynetnojlvphkgt.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_7RhpQjMWhsA3n5WwPG7kEA_HU5G59Wr
 ```
 
-O aplicativo estará acessível em: `http://localhost:5173/`
+---
+
+## 🚀 Como Executar
+
+```bash
+# Instalar dependências
+npm install
+
+# Iniciar servidor local
+npm run dev
+
+# Compilar para produção e checar tipos
+npm run build
+```

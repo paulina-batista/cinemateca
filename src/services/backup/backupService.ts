@@ -1,17 +1,17 @@
-import type { BackupMediaItem, CinematecaBackup, RestoreConflictStrategy, RestoreValidationResult } from '../../types/backup';
-import type { MediaItem } from '../../types/media';
+import type { BackupMediaItem, KinoBackup, RestoreConflictStrategy, RestoreValidationResult } from '../../types/backup';
+import type { MediaItem, MediaType } from '../../types/media';
 import { DEFAULT_STATUS } from '../../types/media';
 import { base64ToBlob, blobToBase64 } from '../../utils/image';
 import { idbService } from '../db/indexedDB';
 
 /**
- * Serviço responsável por gerar e restaurar backups independentes da biblioteca IorHub.
+ * Serviço responsável por gerar e restaurar backups independentes da biblioteca Kino.
  */
 export class BackupService {
   /**
    * Converte a lista atual de itens em um objeto estruturado de backup com imagens em Base64.
    */
-  async exportBackup(items: MediaItem[]): Promise<CinematecaBackup> {
+  async exportBackup(items: MediaItem[]): Promise<KinoBackup> {
     const backupItems: BackupMediaItem[] = [];
 
     for (const item of items) {
@@ -23,13 +23,15 @@ export class BackupService {
         coverBase64 = '';
       }
 
+      const itemType = (item.type === 'movie' || item.type === 'series') ? item.type : 'movie';
+
       backupItems.push({
         id: item.id,
         title: item.title,
-        type: item.type,
+        type: itemType as MediaType,
         genre: item.genre,
         rating: item.rating,
-        status: item.status || DEFAULT_STATUS[item.type] || 'Assistido',
+        status: item.status || DEFAULT_STATUS[itemType as MediaType] || 'Assistido',
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
         notes: item.notes || '',
@@ -40,9 +42,9 @@ export class BackupService {
     }
 
     return {
-      format: 'iorhub-backup',
-      version: 2,
-      appName: 'IorHub',
+      format: 'kino-backup',
+      version: 3,
+      appName: 'Kino',
       exportedAt: new Date().toISOString(),
       itemCount: backupItems.length,
       items: backupItems,
@@ -52,13 +54,13 @@ export class BackupService {
   /**
    * Dispara o download do arquivo JSON de backup no navegador.
    */
-  downloadBackupFile(backup: CinematecaBackup): void {
+  downloadBackupFile(backup: KinoBackup): void {
     const jsonString = JSON.stringify(backup, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8' });
     const url = URL.createObjectURL(blob);
 
     const dateStr = new Date().toISOString().split('T')[0];
-    const fileName = `iorhub_backup_${dateStr}.json`;
+    const fileName = `kino_backup_${dateStr}.json`;
 
     const link = document.createElement('a');
     link.href = url;
@@ -74,7 +76,7 @@ export class BackupService {
 
   /**
    * Valida a integridade, esquema e compatibilidade do arquivo de backup antes de aplicar.
-   * Suporta arquivos do formato novo (iorhub-backup v2) e do formato legado (cinemateca-backup v1).
+   * Suporta arquivos do formato atual (kino-backup v3) e dos formatos legados (iorhub-backup v2, cinemateca-backup v1).
    */
   validateBackupFile(fileContent: string, currentItems: MediaItem[]): RestoreValidationResult {
     let parsed: unknown;
@@ -88,12 +90,16 @@ export class BackupService {
       return { valid: false, error: 'Estrutura inválida de arquivo de backup.' };
     }
 
-    const backup = parsed as Partial<CinematecaBackup>;
+    const backup = parsed as Partial<KinoBackup>;
 
-    if (backup.format !== 'iorhub-backup' && backup.format !== 'cinemateca-backup') {
+    if (
+      backup.format !== 'kino-backup' &&
+      backup.format !== 'iorhub-backup' &&
+      backup.format !== 'cinemateca-backup'
+    ) {
       return {
         valid: false,
-        error: 'Formato incompatível: este arquivo não é um backup oficial do IorHub ou Cinemateca.',
+        error: 'Formato incompatível: este arquivo não é um backup oficial do Kino ou versões anteriores.',
       };
     }
 
@@ -117,27 +123,20 @@ export class BackupService {
       if (!validTypes.includes(item.type)) {
         return {
           valid: false,
-          error: `O registro "${item.title}" possui um tipo inválido (${item.type}). Esperado: filme, série, livro ou jogo.`,
+          error: `O registro "${item.title}" possui um tipo inválido (${item.type}). Esperado: filme ou série.`,
         };
       }
 
-      if (typeof item.rating !== 'number' || !validRatings.includes(item.rating)) {
+      if (!validRatings.includes(item.rating)) {
         return {
           valid: false,
-          error: `O registro "${item.title}" possui uma avaliação inválida (${item.rating}). Deve estar entre 0,5 e 5 estrelas.`,
-        };
-      }
-
-      if (!item.coverBase64 || !item.coverBase64.startsWith('data:image/')) {
-        return {
-          valid: false,
-          error: `O registro "${item.title}" não possui uma capa válida em formato Base64.`,
+          error: `O registro "${item.title}" possui nota inválida (${item.rating}). Permitido apenas de 0,5 a 5,0.`,
         };
       }
     }
 
-    // Calcula estatísticas de conflitos com os dados atuais
-    const existingIds = new Set(currentItems.map((i) => i.id));
+    // Cálculo das estatísticas de mesclagem
+    const existingIds = new Set(currentItems.map((it) => it.id));
     let conflictingCount = 0;
     let newCount = 0;
 
@@ -151,81 +150,77 @@ export class BackupService {
 
     return {
       valid: true,
-      backup: backup as CinematecaBackup,
+      backup: backup as KinoBackup,
       stats: {
         totalInBackup: backup.items.length,
         existingCount: currentItems.length,
-        conflictingCount,
         newCount,
+        conflictingCount,
       },
     };
   }
 
   /**
-   * Executa a restauração com transação segura e política de conflitos escolhida.
+   * Executa a restauração no IndexedDB com base na estratégia escolhida pelo usuário.
    */
   async restoreBackup(
-    backup: CinematecaBackup,
+    backup: KinoBackup,
     strategy: RestoreConflictStrategy,
     currentItems: MediaItem[]
   ): Promise<{ addedCount: number; updatedCount: number }> {
-    const existingMap = new Map<string, MediaItem>(currentItems.map((i) => [i.id, i]));
-    const restoredItems: MediaItem[] = [];
+    const existingMap = new Map(currentItems.map((it) => [it.id, it]));
 
-    for (const bItem of backup.items) {
-      const coverBlob = await base64ToBlob(bItem.coverBase64);
-
-      restoredItems.push({
-        id: bItem.id,
-        title: bItem.title.trim(),
-        type: bItem.type,
-        genre: bItem.genre.trim(),
-        rating: bItem.rating,
-        status: bItem.status || DEFAULT_STATUS[bItem.type] || 'Assistido',
-        coverBlob,
-        createdAt: bItem.createdAt || new Date().toISOString(),
-        updatedAt: bItem.updatedAt || new Date().toISOString(),
-        notes: bItem.notes || '',
-        syncedWithSupabase: bItem.syncedWithSupabase ?? false,
-        remoteId: bItem.remoteId ?? null,
-      });
+    if (strategy === 'replace-all') {
+      await idbService.clearAll();
+      existingMap.clear();
     }
 
     let addedCount = 0;
     let updatedCount = 0;
 
-    if (strategy === 'replace-all') {
-      await idbService.clearAndInsertAll(restoredItems);
-      addedCount = restoredItems.length;
-      return { addedCount, updatedCount };
-    }
+    for (const bItem of backup.items) {
+      const exists = existingMap.has(bItem.id);
 
-    if (strategy === 'merge-overwrite') {
-      const toPut: MediaItem[] = [];
-      for (const item of restoredItems) {
-        if (existingMap.has(item.id)) {
-          updatedCount++;
-        } else {
-          addedCount++;
-        }
-        toPut.push(item);
+      if (exists && strategy === 'merge-keep-existing') {
+        continue;
       }
-      await idbService.putMany(toPut);
-      return { addedCount, updatedCount };
-    }
 
-    if (strategy === 'merge-keep-existing') {
-      const toAdd: MediaItem[] = [];
-      for (const item of restoredItems) {
-        if (!existingMap.has(item.id)) {
-          toAdd.push(item);
-          addedCount++;
+      let coverBlob: Blob;
+      if (bItem.coverBase64) {
+        try {
+          coverBlob = await base64ToBlob(bItem.coverBase64);
+        } catch {
+          coverBlob = new Blob([], { type: 'image/jpeg' });
         }
+      } else {
+        coverBlob = new Blob([], { type: 'image/jpeg' });
       }
-      if (toAdd.length > 0) {
-        await idbService.putMany(toAdd);
+
+      const itemType = (bItem.type === 'movie' || bItem.type === 'series') ? bItem.type : 'movie';
+
+      const mediaItem: MediaItem = {
+        id: bItem.id,
+        title: bItem.title,
+        type: itemType,
+        genre: bItem.genre,
+        rating: bItem.rating,
+        status: bItem.status || DEFAULT_STATUS[itemType as MediaType] || 'Assistido',
+        coverBlob,
+        coverUrl: '',
+        notes: bItem.notes || '',
+        createdAt: bItem.createdAt || new Date().toISOString(),
+        updatedAt: bItem.updatedAt || new Date().toISOString(),
+        syncedWithSupabase: false,
+        remoteId: null,
+      };
+
+      await idbService.save(mediaItem);
+
+      if (exists) {
+        updatedCount++;
+      } else {
+        addedCount++;
       }
-      return { addedCount, updatedCount };
     }
 
     return { addedCount, updatedCount };

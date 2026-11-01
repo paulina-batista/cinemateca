@@ -1,6 +1,6 @@
 -- ==============================================================================
--- SCHEMA OFICIAL SUPABASE • CINEMATECA
--- Tabela de Títulos, Políticas de Segurança (RLS) e Armazenamento de Capas
+-- SCHEMA OFICIAL SUPABASE • KINO
+-- Tabela de Títulos, Políticas de Segurança (RLS), Prevenção de Duplicatas e Storage
 -- ==============================================================================
 
 -- 1. Criação da tabela principal de filmes e séries
@@ -22,6 +22,11 @@ CREATE TABLE IF NOT EXISTS public.media_items (
 CREATE INDEX IF NOT EXISTS idx_media_items_user_id ON public.media_items(user_id);
 CREATE INDEX IF NOT EXISTS idx_media_items_updated_at ON public.media_items(updated_at);
 CREATE INDEX IF NOT EXISTS idx_media_items_deleted_at ON public.media_items(deleted_at);
+
+-- Índice Único para Prevenção de Títulos Duplicados (case-insensitive + trim)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_media_items_user_type_title_normalized
+ON public.media_items (user_id, type, lower(trim(title)))
+WHERE deleted_at IS NULL;
 
 -- 2. Habilitação de Row Level Security (RLS)
 ALTER TABLE public.media_items ENABLE ROW LEVEL SECURITY;
@@ -47,7 +52,20 @@ CREATE POLICY "Usuários podem excluir seus próprios títulos"
     ON public.media_items FOR DELETE
     USING (auth.uid() = user_id);
 
--- 3. Criação do Bucket de Armazenamento de Capas (Supabase Storage)
+-- 3. Habilitação de Supabase Realtime para sincronização automática
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+        AND schemaname = 'public' 
+        AND tablename = 'media_items'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.media_items;
+    END IF;
+END $$;
+
+-- 4. Criação do Bucket de Armazenamento de Capas (Supabase Storage)
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('media-covers', 'media-covers', true)
 ON CONFLICT (id) DO UPDATE SET public = true;

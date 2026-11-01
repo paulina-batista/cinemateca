@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Film, Tv, BookOpen, Gamepad2, Upload, X, AlertCircle, Loader2, ImagePlus, Minus, Plus } from 'lucide-react';
+import { Film, Tv, Upload, X, AlertCircle, Loader2, ImagePlus, Minus, Plus } from 'lucide-react';
 import type { CreateMediaDTO, MediaItem, MediaType, UpdateMediaDTO } from '../types/media';
 import { VALID_RATINGS, STATUS_BY_TYPE, DEFAULT_STATUS, TYPE_LABELS } from '../types/media';
 import { getGenresForType } from '../utils/genres';
@@ -9,6 +9,7 @@ import { StarRating } from './StarRating';
 interface MediaFormModalProps {
   isOpen: boolean;
   initialData?: MediaItem | null;
+  existingItems?: MediaItem[];
   onClose: () => void;
   onSubmit: (data: CreateMediaDTO | UpdateMediaDTO) => Promise<void>;
 }
@@ -16,6 +17,7 @@ interface MediaFormModalProps {
 export const MediaFormModal: React.FC<MediaFormModalProps> = ({
   isOpen,
   initialData,
+  existingItems = [],
   onClose,
   onSubmit,
 }) => {
@@ -36,14 +38,17 @@ export const MediaFormModal: React.FC<MediaFormModalProps> = ({
 
   const isEditing = Boolean(initialData);
 
-  // Inicializa o formulário com dados existentes se for edição, ou com valores padrão
   useEffect(() => {
     let currentCreatedUrl = '';
     if (initialData) {
       setTitle(initialData.title);
-      setType(initialData.type);
+      // Garante que se for um tipo legado seja mapeado para filme
+      const itemType = (initialData.type === 'movie' || initialData.type === 'series')
+        ? initialData.type
+        : 'movie';
+      setType(itemType);
 
-      const availableGenres = getGenresForType(initialData.type);
+      const availableGenres = getGenresForType(itemType);
       const isPreset = (availableGenres as readonly string[]).includes(initialData.genre);
       if (isPreset) {
         setGenre(initialData.genre);
@@ -53,7 +58,7 @@ export const MediaFormModal: React.FC<MediaFormModalProps> = ({
         setCustomGenre(initialData.genre);
       }
 
-      setStatus(initialData.status || DEFAULT_STATUS[initialData.type]);
+      setStatus(initialData.status || DEFAULT_STATUS[itemType]);
       setRating(initialData.rating);
       setNotes(initialData.notes || '');
       setCoverBlob(initialData.coverBlob);
@@ -84,7 +89,6 @@ export const MediaFormModal: React.FC<MediaFormModalProps> = ({
     };
   }, [initialData, isOpen]);
 
-  // Ao alterar o tipo manualmente no cadastro, atualiza gênero padrão e status correspondente
   const handleTypeChange = (newType: MediaType) => {
     setType(newType);
     const newGenres = getGenresForType(newType);
@@ -95,7 +99,6 @@ export const MediaFormModal: React.FC<MediaFormModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Lida com seleção de arquivo da galeria/armazenamento
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -123,7 +126,6 @@ export const MediaFormModal: React.FC<MediaFormModalProps> = ({
     }
   };
 
-  // Ajuste fino com botões de -0.5 e +0.5 para facilidade no celular
   const handleStepRating = (delta: number) => {
     setRating((prev) => {
       const next = Math.round((prev + delta) * 10) / 10;
@@ -143,6 +145,18 @@ export const MediaFormModal: React.FC<MediaFormModalProps> = ({
       return;
     }
 
+    // Regra Obrigatória: Prevenção rigorosa contra duplicatas (case-insensitive + trim)
+    const normalizedNewTitle = trimmedTitle.toLowerCase();
+    const isDuplicate = existingItems.some((item) => {
+      if (isEditing && item.id === initialData?.id) return false;
+      return item.type === type && item.title.trim().toLowerCase() === normalizedNewTitle;
+    });
+
+    if (isDuplicate) {
+      setErrorMessage('Este título já está na sua biblioteca.');
+      return;
+    }
+
     const finalGenre = genre === 'custom' ? customGenre.trim() : genre.trim();
     if (!finalGenre) {
       setErrorMessage('Por favor, selecione ou informe o gênero.');
@@ -156,7 +170,7 @@ export const MediaFormModal: React.FC<MediaFormModalProps> = ({
     }
 
     if (!coverBlob) {
-      setErrorMessage('A imagem de capa é obrigatória. Selecione uma imagem da galeria.');
+      setErrorMessage('A imagem de capa é obrigatória. Selecione uma imagem da sua galeria.');
       return;
     }
 
@@ -176,9 +190,9 @@ export const MediaFormModal: React.FC<MediaFormModalProps> = ({
       await onSubmit(payload);
       onClose();
     } catch (err: unknown) {
-      console.error('Erro ao salvar registro:', err);
-      const msg = err instanceof Error ? err.message : 'Falha ao gravar no banco de dados local.';
-      setErrorMessage(`Erro ao salvar: ${msg}`);
+      console.error('Erro ao salvar no Kino:', err);
+      const msg = err instanceof Error ? err.message : 'Falha ao gravar registro.';
+      setErrorMessage(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -190,29 +204,29 @@ export const MediaFormModal: React.FC<MediaFormModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-[#1E080D]/70 backdrop-blur-sm animate-fade-in"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-xl bg-[#fff9fa] rounded-2xl sm:rounded-3xl border border-[#f3d0d6] shadow-[0_25px_60px_rgba(72,16,25,0.25)] overflow-hidden animate-modal-pop max-h-[92vh] flex flex-col"
+        className="relative w-full max-w-xl bg-[#FFFDFD] rounded-2xl sm:rounded-3xl border border-[#F0D5DA] shadow-[0_25px_60px_rgba(30,8,13,0.35)] overflow-hidden animate-modal-pop max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabeçalho do Modal */}
-        <div className="px-5 py-3.5 sm:px-6 sm:py-4 border-b border-[#f3d9de] flex items-center justify-between bg-white/70">
+        <div className="px-5 py-3.5 sm:px-6 sm:py-4 border-b border-[#F0D5DA] flex items-center justify-between bg-[#FBF6F6]">
           <div>
-            <h2 id="modal-title" className="text-lg sm:text-xl font-bold font-serif text-[#3d121a]">
-              {isEditing ? `Editar ${TYPE_LABELS[type]}` : 'Cadastrar Item'}
+            <h2 id="modal-title" className="text-lg sm:text-xl font-bold font-serif text-[#1E080D]">
+              {isEditing ? `Editar ${TYPE_LABELS[type]}` : 'Adicionar ao Kino'}
             </h2>
-            <p className="text-[11px] sm:text-xs text-[#704850]">
-              {isEditing ? 'Atualize as informações do registro' : 'Adicione à sua biblioteca digital'}
+            <p className="text-[11px] sm:text-xs text-[#781D33]/80">
+              {isEditing ? 'Atualize as informações do título' : 'Adicione à sua curadoria pessoal'}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-[#fceeed] hover:bg-[#f7d6dc] text-[#704850] flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-[#F6EEEE] hover:bg-[#EBD2D7] text-[#781D33] flex items-center justify-center transition-colors cursor-pointer"
             aria-label="Fechar formulário"
           >
             <X className="w-4 h-4" />
@@ -221,78 +235,52 @@ export const MediaFormModal: React.FC<MediaFormModalProps> = ({
 
         {/* Formulário com Scroll Suave */}
         <form onSubmit={handleSubmit} className="overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5 flex-1">
-          {/* Mensagem de Erro */}
+          {/* Mensagem de Erro / Alerta de Duplicata */}
           {errorMessage && (
-            <div className="flex items-start gap-2 p-3 rounded-2xl bg-[#fff0f2] border border-[#f5b3be] text-[#781928] text-xs">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#b02e42]" />
-              <div className="flex-1 font-medium">{errorMessage}</div>
+            <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-[#FFF2F4] border border-[#F0B8C2] text-[#781D33] text-xs animate-shake">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#781D33]" />
+              <div className="flex-1 font-semibold">{errorMessage}</div>
             </div>
           )}
 
-          {/* Campo 1: Categoria (Filme, Série, Livro, Jogo) */}
+          {/* Campo 1: Categoria — Exclusivamente Filmes e Séries */}
           <div>
-            <label className="block text-xs font-semibold text-[#5c2a33] uppercase tracking-wider mb-1.5">
-              Categoria <span className="text-[#b02e42]">*</span>
+            <label className="block text-xs font-semibold text-[#1E080D] uppercase tracking-wider mb-1.5">
+              Categoria <span className="text-[#781D33]">*</span>
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
                 onClick={() => handleTypeChange('movie')}
-                className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl sm:rounded-2xl text-xs font-semibold border transition-all cursor-pointer ${
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl sm:rounded-2xl text-xs font-semibold border transition-all cursor-pointer ${
                   type === 'movie'
-                    ? 'bg-[#722330] text-white border-[#722330] shadow-sm'
-                    : 'bg-white text-[#6b434b] border-[#edd1d6] hover:bg-[#fff5f6]'
+                    ? 'bg-[#781D33] text-white border-[#781D33] shadow-sm'
+                    : 'bg-white text-[#781D33] border-[#F0D5DA] hover:bg-[#FBF6F6]'
                 }`}
               >
-                <Film className="w-3.5 h-3.5" />
+                <Film className="w-4 h-4" />
                 Filme
               </button>
 
               <button
                 type="button"
                 onClick={() => handleTypeChange('series')}
-                className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl sm:rounded-2xl text-xs font-semibold border transition-all cursor-pointer ${
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl sm:rounded-2xl text-xs font-semibold border transition-all cursor-pointer ${
                   type === 'series'
-                    ? 'bg-[#722330] text-white border-[#722330] shadow-sm'
-                    : 'bg-white text-[#6b434b] border-[#edd1d6] hover:bg-[#fff5f6]'
+                    ? 'bg-[#781D33] text-white border-[#781D33] shadow-sm'
+                    : 'bg-white text-[#781D33] border-[#F0D5DA] hover:bg-[#FBF6F6]'
                 }`}
               >
-                <Tv className="w-3.5 h-3.5" />
+                <Tv className="w-4 h-4" />
                 Série
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleTypeChange('book')}
-                className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl sm:rounded-2xl text-xs font-semibold border transition-all cursor-pointer ${
-                  type === 'book'
-                    ? 'bg-[#722330] text-white border-[#722330] shadow-sm'
-                    : 'bg-white text-[#6b434b] border-[#edd1d6] hover:bg-[#fff5f6]'
-                }`}
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                Livro
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleTypeChange('game')}
-                className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl sm:rounded-2xl text-xs font-semibold border transition-all cursor-pointer ${
-                  type === 'game'
-                    ? 'bg-[#722330] text-white border-[#722330] shadow-sm'
-                    : 'bg-white text-[#6b434b] border-[#edd1d6] hover:bg-[#fff5f6]'
-                }`}
-              >
-                <Gamepad2 className="w-3.5 h-3.5" />
-                Jogo
               </button>
             </div>
           </div>
 
-          {/* Campo 2: Seleção de Imagem de Capa (Obrigatório) */}
+          {/* Campo 2: Capa */}
           <div>
-            <label className="block text-xs font-semibold text-[#5c2a33] uppercase tracking-wider mb-1.5">
-              Capa <span className="text-[#b02e42]">*</span>
+            <label className="block text-xs font-semibold text-[#1E080D] uppercase tracking-wider mb-1.5">
+              Capa Oficial <span className="text-[#781D33]">*</span>
             </label>
 
             <input
@@ -304,19 +292,19 @@ export const MediaFormModal: React.FC<MediaFormModalProps> = ({
             />
 
             {previewUrl ? (
-              <div className="relative flex items-center gap-3 p-2.5 sm:p-3 rounded-2xl border border-[#edd1d6] bg-white">
-                <div className="w-16 h-24 sm:w-20 sm:h-28 shrink-0 rounded-xl overflow-hidden bg-[#faeded] border border-[#f3d0d6] shadow-sm">
+              <div className="relative flex items-center gap-3 p-2.5 sm:p-3 rounded-2xl border border-[#F0D5DA] bg-white">
+                <div className="w-16 h-24 sm:w-20 sm:h-28 shrink-0 rounded-xl overflow-hidden bg-[#FBF6F6] border border-[#F0D5DA] shadow-sm">
                   <img src={previewUrl} alt="Prévia da capa" className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-[#4a1c24] truncate">Imagem selecionada</p>
-                  <p className="text-[11px] text-[#80555e] mt-0.5">
-                    Salva localmente no dispositivo para visualização offline.
+                  <p className="text-xs font-semibold text-[#1E080D] truncate">Imagem selecionada</p>
+                  <p className="text-[11px] text-[#781D33]/70 mt-0.5">
+                    Sincronizada automaticamente entre seus dispositivos.
                   </p>
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="mt-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#faeded] text-[#722330] hover:bg-[#f5d9de] transition-colors cursor-pointer"
+                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#F6EEEE] text-[#781D33] hover:bg-[#EBD2D7] transition-colors cursor-pointer"
                   >
                     <ImagePlus className="w-3.5 h-3.5" />
                     Alterar capa
@@ -327,49 +315,48 @@ export const MediaFormModal: React.FC<MediaFormModalProps> = ({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full border-2 border-dashed border-[#e6b8c0] hover:border-[#c56d7b] rounded-2xl p-4 sm:p-6 flex flex-col items-center justify-center bg-white/50 hover:bg-[#fff5f6] transition-all group cursor-pointer"
+                className="w-full border-2 border-dashed border-[#E5BDC5] hover:border-[#781D33] rounded-2xl p-5 sm:p-6 flex flex-col items-center justify-center bg-[#FBF6F6]/50 hover:bg-[#F6EEEE] transition-all group cursor-pointer"
               >
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#fdebed] text-[#c56d7b] group-hover:scale-105 flex items-center justify-center mb-1.5 transition-transform">
-                  <Upload className="w-5 h-5 sm:w-6 sm:h-6" />
+                <div className="w-11 h-11 rounded-full bg-[#F6EEEE] text-[#781D33] group-hover:scale-105 flex items-center justify-center mb-1.5 transition-transform">
+                  <Upload className="w-5 h-5 text-[#781D33]" />
                 </div>
-                <span className="text-xs font-semibold text-[#5c2a33] text-center">
-                  Toque para escolher uma imagem do celular
+                <span className="text-xs font-semibold text-[#1E080D] text-center">
+                  Toque para escolher o cartaz ou foto da galeria
                 </span>
-                <span className="text-[10px] sm:text-[11px] text-[#91666e] mt-0.5">
-                  PNG, JPG ou WEBP (armazenada offline)
+                <span className="text-[10px] sm:text-[11px] text-[#781D33]/70 mt-0.5">
+                  PNG, JPG ou WEBP (armazenamento otimizado)
                 </span>
               </button>
             )}
           </div>
 
-          {/* Campo 3: Título (Obrigatório) */}
+          {/* Campo 3: Título com Validação */}
           <div>
-            <label htmlFor="media-title" className="block text-xs font-semibold text-[#5c2a33] uppercase tracking-wider mb-1.5">
-              Título <span className="text-[#b02e42]">*</span>
+            <label htmlFor="media-title" className="block text-xs font-semibold text-[#1E080D] uppercase tracking-wider mb-1.5">
+              Título <span className="text-[#781D33]">*</span>
             </label>
             <input
               id="media-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="ex: Orgulho e Preconceito, Elden Ring, etc."
+              placeholder="ex: A Colina Escarlate, Interestelar..."
               required
-              className="w-full px-3.5 py-2 rounded-2xl bg-white border border-[#edd1d6] text-base sm:text-sm text-[#3d121a] placeholder-[#ab868e] focus:outline-none focus:ring-2 focus:ring-[#c56d7b]/40 focus:border-[#c56d7b] shadow-sm transition-all"
+              className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-[#F0D5DA] text-base sm:text-sm text-[#1E080D] placeholder-[#A88B91] focus:outline-none focus:ring-2 focus:ring-[#781D33]/30 focus:border-[#781D33] shadow-sm transition-all"
             />
           </div>
 
-          {/* Campo 4: Gênero e Status (Lado a Lado no tablet/desktop, vertical no celular) */}
+          {/* Campo 4: Gênero e Status */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            {/* Gênero */}
             <div>
-              <label htmlFor="media-genre-select" className="block text-xs font-semibold text-[#5c2a33] uppercase tracking-wider mb-1.5">
-                Gênero <span className="text-[#b02e42]">*</span>
+              <label htmlFor="media-genre-select" className="block text-xs font-semibold text-[#1E080D] uppercase tracking-wider mb-1.5">
+                Gênero <span className="text-[#781D33]">*</span>
               </label>
               <select
                 id="media-genre-select"
                 value={genre}
                 onChange={(e) => setGenre(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-2xl bg-white border border-[#edd1d6] text-base sm:text-sm text-[#3d121a] focus:outline-none focus:ring-2 focus:ring-[#c56d7b]/40 focus:border-[#c56d7b] shadow-sm transition-all cursor-pointer"
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-[#F0D5DA] text-base sm:text-sm text-[#1E080D] focus:outline-none focus:ring-2 focus:ring-[#781D33]/30 focus:border-[#781D33] shadow-sm transition-all cursor-pointer"
               >
                 {currentGenres.map((g) => (
                   <option key={g} value={g}>
@@ -385,21 +372,20 @@ export const MediaFormModal: React.FC<MediaFormModalProps> = ({
                   value={customGenre}
                   onChange={(e) => setCustomGenre(e.target.value)}
                   placeholder="Digite o gênero personalizado..."
-                  className="mt-2 w-full px-3.5 py-2 rounded-2xl bg-white border border-[#edd1d6] text-base sm:text-sm text-[#3d121a] focus:outline-none focus:ring-2 focus:ring-[#c56d7b]/40 shadow-sm"
+                  className="mt-2 w-full px-3.5 py-2 rounded-2xl bg-white border border-[#F0D5DA] text-base sm:text-sm text-[#1E080D] focus:outline-none focus:ring-2 focus:ring-[#781D33]/30 shadow-sm"
                 />
               )}
             </div>
 
-            {/* Status Pessoal por Categoria */}
             <div>
-              <label htmlFor="media-status-select" className="block text-xs font-semibold text-[#5c2a33] uppercase tracking-wider mb-1.5">
-                Status <span className="text-[#b02e42]">*</span>
+              <label htmlFor="media-status-select" className="block text-xs font-semibold text-[#1E080D] uppercase tracking-wider mb-1.5">
+                Status <span className="text-[#781D33]">*</span>
               </label>
               <select
                 id="media-status-select"
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-2xl bg-white border border-[#edd1d6] text-base sm:text-sm text-[#3d121a] focus:outline-none focus:ring-2 focus:ring-[#c56d7b]/40 focus:border-[#c56d7b] shadow-sm transition-all cursor-pointer"
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-[#F0D5DA] text-base sm:text-sm text-[#1E080D] focus:outline-none focus:ring-2 focus:ring-[#781D33]/30 focus:border-[#781D33] shadow-sm transition-all cursor-pointer"
               >
                 {currentStatuses.map((st) => (
                   <option key={st} value={st}>
@@ -410,26 +396,25 @@ export const MediaFormModal: React.FC<MediaFormModalProps> = ({
             </div>
           </div>
 
-          {/* Campo 5: Avaliação com Meias Estrelas (0,5 a 5,0) */}
+          {/* Campo 5: Avaliação com Estrelas Douradas */}
           <div>
-            <label className="block text-xs font-semibold text-[#5c2a33] uppercase tracking-wider mb-1.5">
-              Sua Avaliação (0,5 a 5 estrelas) <span className="text-[#b02e42]">*</span>
+            <label className="block text-xs font-semibold text-[#1E080D] uppercase tracking-wider mb-1.5">
+              Sua Avaliação (0,5 a 5 estrelas) <span className="text-[#781D33]">*</span>
             </label>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 bg-white rounded-2xl border border-[#edd1d6]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 bg-white rounded-2xl border border-[#F0D5DA]">
               <div className="flex items-center gap-3">
                 <StarRating rating={rating} onChange={(val) => setRating(val)} size="lg" />
-                <span className="text-base font-bold text-[#722330]">
-                  {formattedRating} <span className="text-xs text-[#996a74] font-normal">/ 5 ★</span>
+                <span className="text-base font-bold text-[#781D33]">
+                  {formattedRating} <span className="text-xs text-[#C99A4E] font-semibold">/ 5 ★</span>
                 </span>
               </div>
 
-              {/* Botões de -0.5 e +0.5 para celulares */}
               <div className="flex items-center gap-1.5 self-end sm:self-auto">
                 <button
                   type="button"
                   onClick={() => handleStepRating(-0.5)}
                   disabled={rating <= 0.5}
-                  className="w-8 h-8 rounded-full bg-[#fdebed] text-[#722330] hover:bg-[#f7d3d9] disabled:opacity-40 flex items-center justify-center transition-colors cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-[#F6EEEE] text-[#781D33] hover:bg-[#EBD2D7] disabled:opacity-40 flex items-center justify-center transition-colors cursor-pointer"
                   aria-label="Diminuir meia estrela"
                   title="-0,5 estrela"
                 >
@@ -439,7 +424,7 @@ export const MediaFormModal: React.FC<MediaFormModalProps> = ({
                   type="button"
                   onClick={() => handleStepRating(0.5)}
                   disabled={rating >= 5.0}
-                  className="w-8 h-8 rounded-full bg-[#fdebed] text-[#722330] hover:bg-[#f7d3d9] disabled:opacity-40 flex items-center justify-center transition-colors cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-[#F6EEEE] text-[#781D33] hover:bg-[#EBD2D7] disabled:opacity-40 flex items-center justify-center transition-colors cursor-pointer"
                   aria-label="Aumentar meia estrela"
                   title="+0,5 estrela"
                 >
@@ -449,28 +434,28 @@ export const MediaFormModal: React.FC<MediaFormModalProps> = ({
             </div>
           </div>
 
-          {/* Campo 6: Anotações / Observações */}
+          {/* Campo 6: Anotações */}
           <div>
-            <label htmlFor="media-notes" className="block text-xs font-semibold text-[#5c2a33] uppercase tracking-wider mb-1.5">
-              Anotações Pessoais <span className="text-[10px] text-[#966b73] font-normal lowercase">(opcional)</span>
+            <label htmlFor="media-notes" className="block text-xs font-semibold text-[#1E080D] uppercase tracking-wider mb-1.5">
+              Anotações e Crítica Pessoal <span className="text-[10px] text-[#781D33]/60 font-normal lowercase">(opcional)</span>
             </label>
             <textarea
               id="media-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              placeholder="Momentos marcantes, opiniões, data de término..."
-              className="w-full px-3.5 py-2 rounded-2xl bg-white border border-[#edd1d6] text-base sm:text-sm text-[#3d121a] placeholder-[#ab868e] focus:outline-none focus:ring-2 focus:ring-[#c56d7b]/40 focus:border-[#c56d7b] shadow-sm transition-all resize-none"
+              placeholder="Diretor, atmosfera visual, citações, impressões..."
+              className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-[#F0D5DA] text-base sm:text-sm text-[#1E080D] placeholder-[#A88B91] focus:outline-none focus:ring-2 focus:ring-[#781D33]/30 focus:border-[#781D33] shadow-sm transition-all resize-none"
             />
           </div>
 
           {/* Rodapé do Modal */}
-          <div className="pt-2 sm:pt-3 border-t border-[#f3d9de] flex items-center justify-end gap-2.5">
+          <div className="pt-2 sm:pt-3 border-t border-[#F0D5DA] flex items-center justify-end gap-2.5">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2 rounded-full text-xs font-semibold text-[#704850] hover:bg-[#faeded] transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-full text-xs font-semibold text-[#781D33] hover:bg-[#F6EEEE] transition-colors cursor-pointer"
             >
               Cancelar
             </button>
@@ -478,10 +463,10 @@ export const MediaFormModal: React.FC<MediaFormModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-xs font-semibold bg-[#722330] text-white hover:bg-[#8c2d3c] disabled:opacity-60 shadow-[0_4px_14px_rgba(114,35,48,0.2)] transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-6 py-2.5 rounded-full text-xs font-semibold bg-[#781D33] text-white hover:bg-[#8C253E] border border-[#C99A4E]/30 disabled:opacity-60 shadow-[0_4px_14px_rgba(120,29,51,0.25)] transition-all cursor-pointer"
             >
               {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              {isEditing ? 'Salvar Alterações' : 'Salvar no IorHub'}
+              {isEditing ? 'Salvar Alterações' : 'Adicionar ao Kino'}
             </button>
           </div>
         </form>

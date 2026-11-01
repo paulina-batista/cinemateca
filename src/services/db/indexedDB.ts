@@ -262,6 +262,27 @@ class IndexedDBService {
       }
     });
   }
+
+  /**
+   * Salva ou atualiza um item no IndexedDB (alias para put).
+   */
+  public async save(item: MediaItem): Promise<void> {
+    return this.put(item);
+  }
+
+  /**
+   * Limpa todos os registros do store.
+   */
+  public async clearAll(): Promise<void> {
+    const db = await this.getDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.clear();
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(new Error('Falha ao limpar armazenamento local'));
+    });
+  }
 }
 
 export const idbService = new IndexedDBService();

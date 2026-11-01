@@ -1,13 +1,13 @@
 {
-  "name": "IorHub",
-  "short_name": "IorHub",
-  "description": "Hub pessoal para organizar filmes, séries, livros e jogos em uma única biblioteca digital.",
+  "name": "Kino",
+  "short_name": "Kino",
+  "description": "Curadoria pessoal de arte e mídias. Organize filmes e séries com estética e sincronização na nuvem.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#fdf8f8",
-  "theme_color": "#fdf8f8",
+  "background_color": "#FBF6F6",
+  "theme_color": "#781D33",
   "icons": [
     {
       "src": "/icon-192.png",

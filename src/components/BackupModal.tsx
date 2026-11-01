@@ -119,35 +119,35 @@ export const BackupModal: React.FC<BackupModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-[#1E080D]/70 backdrop-blur-sm animate-fade-in"
       role="dialog"
       aria-modal="true"
       aria-labelledby="backup-title"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-xl bg-[#fff9fa] rounded-3xl border border-[#f3d0d6] shadow-[0_25px_60px_rgba(72,16,25,0.25)] overflow-hidden animate-modal-pop max-h-[92vh] flex flex-col"
+        className="relative w-full max-w-xl bg-[#FFFDFD] rounded-3xl border border-[#F0D5DA] shadow-[0_25px_60px_rgba(30,8,13,0.35)] overflow-hidden animate-modal-pop max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabeçalho */}
-        <div className="px-6 py-4 border-b border-[#f3d9de] flex items-center justify-between bg-white/70">
+        <div className="px-6 py-4 border-b border-[#F0D5DA] flex items-center justify-between bg-[#FBF6F6]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#faeded] text-[#722330] flex items-center justify-center border border-[#f3ccd3]">
-              <Archive className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-xl bg-[#F6EEEE] text-[#781D33] flex items-center justify-center border border-[#F0D5DA]">
+              <Archive className="w-4 h-4 text-[#781D33]" />
             </div>
             <div>
-              <h2 id="backup-title" className="text-lg font-bold font-serif text-[#3d121a]">
+              <h2 id="backup-title" className="text-lg font-bold font-serif text-[#1E080D]">
                 Gerenciamento de Dados & Backup
               </h2>
-              <p className="text-xs text-[#704850]">
-                Exporte sua biblioteca ou restaure arquivos anteriores com segurança
+              <p className="text-xs text-[#781D33]/80">
+                Exporte sua biblioteca Kino ou restaure arquivos anteriores
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-[#fceeed] hover:bg-[#f7d6dc] text-[#704850] flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-full bg-[#F6EEEE] hover:bg-[#EBD2D7] text-[#781D33] flex items-center justify-center transition-colors cursor-pointer"
             aria-label="Fechar"
           >
             <X className="w-4 h-4" />
@@ -155,13 +155,13 @@ export const BackupModal: React.FC<BackupModalProps> = ({
         </div>
 
         {/* Tabs de Seleção */}
-        <div className="flex border-b border-[#f3d9de] bg-[#fdf2f4]/60 px-6 pt-3 gap-3">
+        <div className="flex border-b border-[#F0D5DA] bg-[#FBF6F6] px-6 pt-3 gap-3">
           <button
             onClick={() => setActiveTab('export')}
-            className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 ${
+            className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'export'
-                ? 'border-[#722330] text-[#722330]'
-                : 'border-transparent text-[#704850] hover:text-[#3d121a]'
+                ? 'border-[#781D33] text-[#781D33]'
+                : 'border-transparent text-[#781D33]/70 hover:text-[#1E080D]'
             }`}
           >
             <Download className="w-3.5 h-3.5" />
@@ -173,10 +173,10 @@ export const BackupModal: React.FC<BackupModalProps> = ({
               setActiveTab('restore');
               resetRestoreState();
             }}
-            className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 ${
+            className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'restore'
-                ? 'border-[#722330] text-[#722330]'
-                : 'border-transparent text-[#704850] hover:text-[#3d121a]'
+                ? 'border-[#781D33] text-[#781D33]'
+                : 'border-transparent text-[#781D33]/70 hover:text-[#1E080D]'
             }`}
           >
             <Upload className="w-3.5 h-3.5" />
@@ -189,22 +189,22 @@ export const BackupModal: React.FC<BackupModalProps> = ({
           {activeTab === 'export' ? (
             /* SEÇÃO EXPORTAÇÃO */
             <div className="space-y-4">
-              <div className="p-4 rounded-2xl bg-white border border-[#edd1d6] shadow-sm">
-                <h3 className="text-sm font-bold text-[#4a1c24] mb-1">
+              <div className="p-4 rounded-2xl bg-white border border-[#F0D5DA] shadow-sm">
+                <h3 className="text-sm font-bold text-[#1E080D] mb-1">
                   Exportação Completa da Biblioteca
                 </h3>
-                <p className="text-xs text-[#704850] leading-relaxed">
-                  O arquivo gerado conterá todos os seus {currentItems.length} registros, capas em alta resolução codificadas em Base64, notas e avaliações com meias estrelas. O arquivo é independente do navegador e pode ser salvo onde você desejar.
+                <p className="text-xs text-[#781D33]/80 leading-relaxed">
+                  O arquivo gerado conterá todos os seus {currentItems.length} registros, capas em alta resolução codificadas em Base64, notas e avaliações com meias estrelas. O arquivo é independente e seguro.
                 </p>
 
-                <div className="mt-3.5 flex items-center gap-2 text-[11px] text-[#80555e] bg-[#fdf6f7] p-2.5 rounded-xl border border-[#f3ccd3]">
-                  <ShieldCheck className="w-4 h-4 text-[#c56d7b] shrink-0" />
-                  <span>Seus dados nunca saem do seu dispositivo; todo o processo é gerado localmente.</span>
+                <div className="mt-3.5 flex items-center gap-2 text-[11px] text-[#781D33]/80 bg-[#F6EEEE] p-2.5 rounded-xl border border-[#F0D5DA]">
+                  <ShieldCheck className="w-4 h-4 text-[#C99A4E] shrink-0" />
+                  <span>Seus dados são protegidos; o arquivo é gerado diretamente para você.</span>
                 </div>
               </div>
 
               {exportSuccessMessage && (
-                <div className="flex items-center gap-2 p-3.5 rounded-2xl bg-[#f0fbf4] border border-[#a7e2b7] text-[#145a27] text-xs font-medium">
+                <div className="flex items-center gap-2 p-3.5 rounded-2xl bg-[#F0FBF4] border border-[#A7E2B7] text-[#145A27] text-xs font-medium">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>{exportSuccessMessage}</span>
                 </div>
@@ -213,7 +213,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({
               <button
                 onClick={handleExport}
                 disabled={isExporting}
-                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-xs sm:text-sm font-semibold bg-[#722330] text-white hover:bg-[#8c2d3c] disabled:opacity-60 shadow-[0_4px_14px_rgba(114,35,48,0.2)] transition-all"
+                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-xs sm:text-sm font-semibold bg-[#781D33] text-white hover:bg-[#8C253E] border border-[#C99A4E]/30 disabled:opacity-60 shadow-[0_4px_14px_rgba(120,29,51,0.2)] transition-all cursor-pointer"
               >
                 {isExporting ? (
                   <>
@@ -223,7 +223,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({
                 ) : (
                   <>
                     <Download className="w-4 h-4" />
-                    Exportar e Baixar Backup (.json)
+                    Exportar e Baixar Backup Kino (.json)
                   </>
                 )}
               </button>
@@ -242,15 +242,15 @@ export const BackupModal: React.FC<BackupModalProps> = ({
               {!validatedBackup && !restoreResult && (
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-[#e6b8c0] hover:border-[#c56d7b] rounded-2xl p-6 flex flex-col items-center justify-center bg-white/50 hover:bg-[#fff5f6] transition-all cursor-pointer text-center group"
+                  className="w-full border-2 border-dashed border-[#E5BDC5] hover:border-[#781D33] rounded-2xl p-6 flex flex-col items-center justify-center bg-[#FBF6F6]/50 hover:bg-[#F6EEEE] transition-all cursor-pointer text-center group"
                 >
-                  <div className="w-12 h-12 rounded-full bg-[#fdebed] text-[#c56d7b] group-hover:scale-105 flex items-center justify-center mb-2 transition-transform">
-                    <Upload className="w-6 h-6" />
+                  <div className="w-12 h-12 rounded-full bg-[#F6EEEE] text-[#781D33] group-hover:scale-105 flex items-center justify-center mb-2 transition-transform">
+                    <Upload className="w-6 h-6 text-[#781D33]" />
                   </div>
-                  <span className="text-xs font-semibold text-[#5c2a33]">
+                  <span className="text-xs font-semibold text-[#1E080D]">
                     {selectedFile ? selectedFile.name : 'Selecione um arquivo de backup (.json)'}
                   </span>
-                  <span className="text-[11px] text-[#91666e] mt-0.5">
+                  <span className="text-[11px] text-[#781D33]/70 mt-0.5">
                     Clique aqui para carregar o arquivo exportado anteriormente
                   </span>
                 </div>
@@ -258,25 +258,25 @@ export const BackupModal: React.FC<BackupModalProps> = ({
 
               {/* Erro de Validação */}
               {validationError && (
-                <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-[#fff0f2] border border-[#f5b3be] text-[#781928] text-xs">
-                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-[#b02e42]" />
+                <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-[#FFF2F4] border border-[#F0B8C2] text-[#781D33] text-xs">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-[#781D33]" />
                   <div className="flex-1 font-medium">{validationError}</div>
                 </div>
               )}
 
               {/* Resultado pós-restauração */}
               {restoreResult && (
-                <div className="p-4 rounded-2xl bg-[#f0fbf4] border border-[#a7e2b7] text-[#145a27] space-y-2">
+                <div className="p-4 rounded-2xl bg-[#F0FBF4] border border-[#A7E2B7] text-[#145A27] space-y-2">
                   <div className="flex items-center gap-2 font-bold text-sm">
                     <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                     Restauração Concluída com Sucesso!
                   </div>
                   <p className="text-xs">
-                    {restoreResult.addedCount} títulos adicionados e {restoreResult.updatedCount} títulos atualizados no IndexedDB.
+                    {restoreResult.addedCount} títulos adicionados e {restoreResult.updatedCount} títulos atualizados no acervo.
                   </p>
                   <button
                     onClick={onClose}
-                    className="mt-2 px-4 py-2 rounded-full bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 transition-colors"
+                    className="mt-2 px-4 py-2 rounded-full bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 transition-colors cursor-pointer"
                   >
                     Fechar e Ver Biblioteca
                   </button>
@@ -286,79 +286,79 @@ export const BackupModal: React.FC<BackupModalProps> = ({
               {/* Painel de Validação e Escolha da Estratégia */}
               {validatedBackup && previewStats && !restoreResult && (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-white border border-[#edd1d6] shadow-sm space-y-2">
-                    <div className="flex items-center gap-2 text-[#722330] font-semibold text-xs">
+                  <div className="p-4 rounded-2xl bg-white border border-[#F0D5DA] shadow-sm space-y-2">
+                    <div className="flex items-center gap-2 text-[#781D33] font-semibold text-xs">
                       <FileCheck2 className="w-4 h-4" />
-                      Backup Válido (IorHub v{validatedBackup.version})
+                      Backup Válido (v{validatedBackup.version})
                     </div>
-                    <div className="grid grid-cols-2 gap-2 pt-1 text-xs text-[#5c2a33]">
-                      <div className="p-2 rounded-xl bg-[#faeded]">
+                    <div className="grid grid-cols-2 gap-2 pt-1 text-xs text-[#1E080D]">
+                      <div className="p-2 rounded-xl bg-[#F6EEEE]">
                         Total no arquivo: <span className="font-bold">{previewStats.totalInBackup}</span>
                       </div>
-                      <div className="p-2 rounded-xl bg-[#faeded]">
+                      <div className="p-2 rounded-xl bg-[#F6EEEE]">
                         Novos títulos: <span className="font-bold text-emerald-700">{previewStats.newCount}</span>
                       </div>
                     </div>
                     {previewStats.conflictingCount > 0 && (
-                      <p className="text-[11px] text-[#9c2436] font-medium pt-1">
-                        Atenção: {previewStats.conflictingCount} título(s) já existem na sua biblioteca atual com o mesmo ID.
+                      <p className="text-[11px] text-[#781D33] font-medium pt-1">
+                        Aviso: {previewStats.conflictingCount} título(s) já existem na sua biblioteca atual com o mesmo identificador.
                       </p>
                     )}
                   </div>
 
                   {/* Seleção de Política de Mesclagem */}
                   <div className="space-y-2">
-                    <label className="block text-xs font-semibold text-[#5c2a33] uppercase tracking-wider">
+                    <label className="block text-xs font-semibold text-[#1E080D] uppercase tracking-wider">
                       Política de Restauração:
                     </label>
 
                     <div className="space-y-2 text-xs">
-                      <label className="flex items-start gap-2.5 p-3 rounded-2xl border cursor-pointer transition-colors bg-white border-[#edd1d6] hover:bg-[#fff5f6]">
+                      <label className="flex items-start gap-2.5 p-3 rounded-2xl border cursor-pointer transition-colors bg-white border-[#F0D5DA] hover:bg-[#FBF6F6]">
                         <input
                           type="radio"
                           name="conflictStrategy"
                           value="merge-keep-existing"
                           checked={conflictStrategy === 'merge-keep-existing'}
                           onChange={() => setConflictStrategy('merge-keep-existing')}
-                          className="mt-0.5 accent-[#722330]"
+                          className="mt-0.5 accent-[#781D33]"
                         />
                         <div>
-                          <span className="font-bold text-[#4a1c24]">Mesclar e preservar existentes (Recomendado)</span>
-                          <p className="text-[11px] text-[#704850] mt-0.5">
+                          <span className="font-bold text-[#1E080D]">Mesclar e preservar existentes (Recomendado)</span>
+                          <p className="text-[11px] text-[#781D33]/80 mt-0.5">
                             Adiciona apenas os títulos novos. Se algum título já existir na biblioteca, o seu registro atual não será alterado.
                           </p>
                         </div>
                       </label>
 
-                      <label className="flex items-start gap-2.5 p-3 rounded-2xl border cursor-pointer transition-colors bg-white border-[#edd1d6] hover:bg-[#fff5f6]">
+                      <label className="flex items-start gap-2.5 p-3 rounded-2xl border cursor-pointer transition-colors bg-white border-[#F0D5DA] hover:bg-[#FBF6F6]">
                         <input
                           type="radio"
                           name="conflictStrategy"
                           value="merge-overwrite"
                           checked={conflictStrategy === 'merge-overwrite'}
                           onChange={() => setConflictStrategy('merge-overwrite')}
-                          className="mt-0.5 accent-[#722330]"
+                          className="mt-0.5 accent-[#781D33]"
                         />
                         <div>
-                          <span className="font-bold text-[#4a1c24]">Mesclar e atualizar</span>
-                          <p className="text-[11px] text-[#704850] mt-0.5">
+                          <span className="font-bold text-[#1E080D]">Mesclar e atualizar</span>
+                          <p className="text-[11px] text-[#781D33]/80 mt-0.5">
                             Adiciona novos títulos e atualiza os registros existentes com as notas e capas vindas do backup.
                           </p>
                         </div>
                       </label>
 
-                      <label className="flex items-start gap-2.5 p-3 rounded-2xl border cursor-pointer transition-colors bg-[#fff5f6] border-[#f0b5be] hover:bg-[#fdebed]">
+                      <label className="flex items-start gap-2.5 p-3 rounded-2xl border cursor-pointer transition-colors bg-[#FFF2F4] border-[#F0B8C2] hover:bg-[#F6EEEE]">
                         <input
                           type="radio"
                           name="conflictStrategy"
                           value="replace-all"
                           checked={conflictStrategy === 'replace-all'}
                           onChange={() => setConflictStrategy('replace-all')}
-                          className="mt-0.5 accent-[#722330]"
+                          className="mt-0.5 accent-[#781D33]"
                         />
                         <div>
-                          <span className="font-bold text-[#9c2436]">Substituir biblioteca integralmente</span>
-                          <p className="text-[11px] text-[#704850] mt-0.5">
+                          <span className="font-bold text-[#781D33]">Substituir biblioteca integralmente</span>
+                          <p className="text-[11px] text-[#781D33]/80 mt-0.5">
                             Substitui todos os dados locais pelos itens contidos exclusivamente neste arquivo de backup.
                           </p>
                         </div>
@@ -372,7 +372,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({
                       type="button"
                       onClick={resetRestoreState}
                       disabled={isRestoring}
-                      className="px-4 py-2 rounded-full text-xs font-semibold text-[#704850] hover:bg-[#faeded]"
+                      className="px-4 py-2 rounded-full text-xs font-semibold text-[#781D33] hover:bg-[#F6EEEE] cursor-pointer"
                     >
                       Escolher outro arquivo
                     </button>
@@ -381,7 +381,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({
                       type="button"
                       onClick={handleConfirmRestore}
                       disabled={isRestoring}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-semibold bg-[#722330] text-white hover:bg-[#8c2d3c] shadow-sm disabled:opacity-60"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-semibold bg-[#781D33] text-white hover:bg-[#8C253E] border border-[#C99A4E]/30 shadow-sm disabled:opacity-60 cursor-pointer"
                     >
                       {isRestoring ? (
                         <>

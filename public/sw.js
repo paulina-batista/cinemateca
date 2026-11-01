@@ -1,4 +1,4 @@
-const CACHE_NAME = 'iorhub-cache-v2';
+const CACHE_NAME = 'kino-cache-v3';
 
 const STATIC_ASSETS = [
   '/',
@@ -49,63 +49,53 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 1. Navegação de Páginas (HTML): Network-First com fallback para o index em cache
-  if (request.mode === 'navigate') {
+  // Network-First para a página principal (HTML) para sempre exibir a versão mais recente
+  if (request.mode === 'navigate' || request.destination === 'document') {
     event.respondWith(
       fetch(request)
         .then((response) => {
           if (response && response.status === 200) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
           }
           return response;
         })
-        .catch(async () => {
-          const cached = await caches.match(request);
-          if (cached) return cached;
-          return caches.match('/index.html');
+        .catch(() => {
+          return caches.match('/index.html') || caches.match(request);
         })
     );
     return;
   }
 
-  // 2. Recursos Estáticos (/assets/, favicon, fontes Google): Stale-While-Revalidate
-  const isStaticAsset =
-    url.pathname.startsWith('/assets/') ||
-    url.hostname.includes('fonts.googleapis.com') ||
-    url.hostname.includes('fonts.gstatic.com') ||
-    STATIC_ASSETS.includes(url.pathname);
-
-  if (isStaticAsset) {
-    event.respondWith(
-      caches.match(request).then((cachedResponse) => {
-        const fetchPromise = fetch(request)
+  // Cache-First para fontes e assets estáticos (CSS, JS, SVG, Imagens locais)
+  event.respondWith(
+    caches.match(request).then((cachedResponse) => {
+      if (cachedResponse) {
+        // Busca versão atualizada em background (stale-while-revalidate suave)
+        fetch(request)
           .then((networkResponse) => {
             if (networkResponse && networkResponse.status === 200) {
               caches.open(CACHE_NAME).then((cache) => cache.put(request, networkResponse));
             }
-            return networkResponse;
           })
           .catch(() => {
-            // Offline silencioso para assets em segundo plano
+            // Silencioso em caso de ausência de rede
           });
+        return cachedResponse;
+      }
 
-        return cachedResponse || fetchPromise;
-      })
-    );
-    return;
-  }
-
-  // 3. Demais requisições GET padrão: Network com fallback para cache
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        if (response && response.status === 200) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+      return fetch(request).then((networkResponse) => {
+        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+          return networkResponse;
         }
-        return response;
-      })
-      .catch(() => caches.match(request))
+
+        const responseToCache = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(request, responseToCache);
+        });
+
+        return networkResponse;
+      });
+    })
   );
 });
