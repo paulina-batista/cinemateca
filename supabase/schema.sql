@@ -18,6 +18,9 @@ CREATE TABLE IF NOT EXISTS public.media_items (
     deleted_at TIMESTAMPTZ DEFAULT NULL
 );
 
+-- Adiciona coluna 'status' caso ainda não exista (idempotente)
+ALTER TABLE public.media_items ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'Assistido';
+
 -- Índices de alta performance
 CREATE INDEX IF NOT EXISTS idx_media_items_user_id ON public.media_items(user_id);
 CREATE INDEX IF NOT EXISTS idx_media_items_updated_at ON public.media_items(updated_at);
@@ -27,6 +30,7 @@ CREATE INDEX IF NOT EXISTS idx_media_items_deleted_at ON public.media_items(dele
 CREATE UNIQUE INDEX IF NOT EXISTS uq_media_items_user_type_title_normalized
 ON public.media_items (user_id, type, lower(trim(title)))
 WHERE deleted_at IS NULL;
+
 
 -- 2. Habilitação de Row Level Security (RLS)
 ALTER TABLE public.media_items ENABLE ROW LEVEL SECURITY;
