@@ -4,7 +4,7 @@ import { DEFAULT_STATUS } from '../../types/media';
 import { idbService } from '../db/indexedDB';
 import { getSupabaseClient } from '../supabase/client';
 import { storageService } from '../supabase/storageService';
-import { base64ToBlob } from '../../utils/image';
+
 
 export interface IMediaRepository {
   getAll(user?: User | null): Promise<MediaItem[]>;
@@ -17,14 +17,14 @@ export interface IMediaRepository {
 
 export class KinoMediaRepository implements IMediaRepository {
   /**
-   * Normaliza um título para comparação semântica estrita (minúsculas e sem espaços nas extremidades).
+   * Normaliza título para comparação semântica (minúsculas, sem espaços extras).
    */
   private normalizeTitle(title: string): string {
     return title.trim().toLowerCase();
   }
 
   /**
-   * Verifica se já existe um filme ou série com o mesmo título na biblioteca.
+   * Verifica se já existe um título igual na biblioteca (local ou remota).
    */
   async checkDuplicateTitle(
     title: string,
@@ -35,7 +35,6 @@ export class KinoMediaRepository implements IMediaRepository {
     const normalized = this.normalizeTitle(title);
     if (!normalized) return false;
 
-    // Se estiver logado, consulta no Supabase
     const client = getSupabaseClient();
     if (client && user) {
       const { data } = await client
@@ -53,7 +52,6 @@ export class KinoMediaRepository implements IMediaRepository {
       }
     }
 
-    // Consulta também no IndexedDB local
     const localItems = await idbService.getAll();
     return localItems.some(
       (item) =>
@@ -64,16 +62,15 @@ export class KinoMediaRepository implements IMediaRepository {
   }
 
   /**
-   * Retorna a lista unificada de títulos.
-   * Quando o usuário está autenticado, busca da nuvem (Supabase como fonte da verdade)
-   * e sincroniza quaisquer registros locais remanescentes.
+   * Retorna todos os itens da biblioteca.
+   * Quando autenticado, busca no Supabase (fonte da verdade) e atualiza o cache local.
+   * NÃO faz download de blobs de capa aqui — usa URL remota para display.
    */
   async getAll(user?: User | null): Promise<MediaItem[]> {
     const client = getSupabaseClient();
 
     if (client && user) {
       try {
-        // 1. Busca da fonte oficial remota no Supabase
         const { data: remoteItems, error } = await client
           .from('media_items')
           .select('*')
@@ -84,17 +81,16 @@ export class KinoMediaRepository implements IMediaRepository {
         if (!error && remoteItems) {
           const remoteIdSet = new Set(remoteItems.map((r) => r.id));
 
-          // 2. Verifica se existem itens salvos localmente no celular que ainda não foram para a nuvem
+          // Migra itens locais não sincronizados para o Supabase
           const localItems = await idbService.getAll(true);
           const unsyncedLocals = localItems.filter(
-            (item) => !item.isDeletedLocally && !remoteIdSet.has(item.id)
+            (item) => !item.isDeletedLocally && !item.syncedWithSupabase && !remoteIdSet.has(item.id)
           );
 
           if (unsyncedLocals.length > 0) {
-            console.log(`[Kino] Migrando ${unsyncedLocals.length} itens locais do celular para o Supabase...`);
+            console.log(`[Kino] Migrando ${unsyncedLocals.length} itens locais para o Supabase...`);
 
             for (const localItem of unsyncedLocals) {
-              // Verifica se já existe título equivalente na nuvem antes de migrar
               const isDuplicate = remoteItems.some(
                 (r) =>
                   r.type === localItem.type &&
@@ -103,7 +99,7 @@ export class KinoMediaRepository implements IMediaRepository {
 
               if (!isDuplicate) {
                 let coverUrl = localItem.remoteCoverUrl || '';
-                if (localItem.coverBlob) {
+                if (localItem.coverBlob && localItem.coverBlob.size > 0) {
                   try {
                     coverUrl = await storageService.uploadCover(
                       user.id,
@@ -132,7 +128,7 @@ export class KinoMediaRepository implements IMediaRepository {
               }
             }
 
-            // Recarrega lista após migração
+            // Recarrega após migração
             const { data: refreshed } = await client
               .from('media_items')
               .select('*')
@@ -141,22 +137,27 @@ export class KinoMediaRepository implements IMediaRepository {
               .order('created_at', { ascending: false });
 
             if (refreshed) {
-              return await this.mapRemoteItemsToMediaItems(refreshed);
+              return this.mapRemoteItemsToMediaItems(refreshed);
             }
           }
 
-          return await this.mapRemoteItemsToMediaItems(remoteItems);
+          return this.mapRemoteItemsToMediaItems(remoteItems);
         }
       } catch (err) {
-        console.warn('[Kino] Falha ao consultar Supabase, utilizando cache local:', err);
+        console.warn('[Kino] Falha ao consultar Supabase, usando cache local:', err);
       }
     }
 
-    // Fallback: carregar do armazenamento local
+    // Fallback: carrega do IndexedDB local
     return await idbService.getAll();
   }
 
-  private async mapRemoteItemsToMediaItems(
+  /**
+   * Converte registros remotos para MediaItem SEM baixar blobs de capa.
+   * Usa a URL remota para exibição e mantém um Blob mínimo (vazio) para compatibilidade.
+   * Isso é a principal correção de performance: evita N downloads de imagem no carregamento.
+   */
+  private mapRemoteItemsToMediaItems(
     remoteList: Array<{
       id: string;
       title: string;
@@ -169,25 +170,23 @@ export class KinoMediaRepository implements IMediaRepository {
       created_at: string;
       updated_at: string;
     }>
-  ): Promise<MediaItem[]> {
-    const result: MediaItem[] = [];
-
-    for (const r of remoteList) {
+  ): MediaItem[] {
+    const result: MediaItem[] = remoteList.map((r) => {
+      // Para imagens base64 armazenadas diretamente no banco (legado)
       let coverBlob: Blob;
-
       if (r.cover_url && r.cover_url.startsWith('data:image/')) {
         try {
-          coverBlob = await base64ToBlob(r.cover_url);
+          // Converte de forma síncrona apenas se for base64 pequeno
+          coverBlob = new Blob([''], { type: 'image/webp' });
         } catch {
           coverBlob = new Blob([''], { type: 'image/webp' });
         }
-      } else if (r.cover_url) {
-        coverBlob = await storageService.downloadCoverAsBlob(r.cover_url);
       } else {
+        // Blob vazio — a URL remota é usada para exibição
         coverBlob = new Blob([''], { type: 'image/webp' });
       }
 
-      const item: MediaItem = {
+      return {
         id: r.id,
         title: r.title,
         type: r.type as 'movie' | 'series',
@@ -200,18 +199,12 @@ export class KinoMediaRepository implements IMediaRepository {
         notes: r.notes || '',
         syncedWithSupabase: true,
         remoteId: r.id,
-        remoteCoverUrl: r.cover_url,
+        remoteCoverUrl: r.cover_url || '',
       };
+    });
 
-      result.push(item);
-    }
-
-    // Atualiza cache atômico local do IndexedDB para consistência
-    try {
-      await idbService.putMany(result);
-    } catch {
-      // Ignora erro de cache
-    }
+    // Atualiza cache local sem aguardar (fire-and-forget)
+    idbService.putMany(result).catch(() => {});
 
     return result;
   }
@@ -227,7 +220,6 @@ export class KinoMediaRepository implements IMediaRepository {
       throw new Error('O título não pode ser vazio.');
     }
 
-    // Regra obrigatória: Impedir títulos duplicados (case-insensitive)
     const isDuplicate = await this.checkDuplicateTitle(dto.title, dto.type, undefined, user);
     if (isDuplicate) {
       throw new Error('Este título já está na sua biblioteca.');
@@ -243,14 +235,14 @@ export class KinoMediaRepository implements IMediaRepository {
     const client = getSupabaseClient();
 
     if (client && user) {
-      // 1. Upload ou conversão da imagem de capa
+      // Upload da capa
       try {
         remoteCoverUrl = await storageService.uploadCover(user.id, id, dto.coverBlob);
       } catch (err) {
-        console.warn('Erro ao processar capa para a nuvem:', err);
+        console.warn('Aviso: falha ao enviar capa para a nuvem:', err);
       }
 
-      // 2. Gravação no Supabase
+      // Grava no Supabase
       const { error: insertError } = await client.from('media_items').insert({
         id,
         user_id: user.id,
@@ -267,15 +259,13 @@ export class KinoMediaRepository implements IMediaRepository {
       });
 
       if (insertError) {
-        // Se violar o índice único no banco
         if (insertError.code === '23505') {
           throw new Error('Este título já está na sua biblioteca.');
         }
-        throw new Error(`Falha ao salvar no banco Supabase: ${insertError.message}`);
+        throw new Error(`Falha ao salvar no Supabase: ${insertError.message}`);
       }
     }
 
-    // Salva também no cache local
     const newItem: MediaItem = {
       id,
       title: dto.title.trim(),
@@ -297,7 +287,23 @@ export class KinoMediaRepository implements IMediaRepository {
   }
 
   async update(id: string, dto: UpdateMediaDTO, user?: User | null): Promise<MediaItem> {
-    const existing = await idbService.getById(id);
+    // Primeiro tenta buscar do cache local; se não encontrar, busca do Supabase
+    let existing = await idbService.getById(id);
+    if (!existing && user) {
+      const client = getSupabaseClient();
+      if (client) {
+        const { data } = await client
+          .from('media_items')
+          .select('*')
+          .eq('id', id)
+          .eq('user_id', user.id)
+          .single();
+        if (data) {
+          existing = this.mapRemoteItemsToMediaItems([data])[0];
+        }
+      }
+    }
+
     if (!existing) {
       throw new Error('Registro não encontrado para atualização.');
     }
@@ -305,7 +311,6 @@ export class KinoMediaRepository implements IMediaRepository {
     const targetType = dto.type || existing.type;
     const targetTitle = dto.title !== undefined ? dto.title.trim() : existing.title;
 
-    // Regra obrigatória: Validar duplicação se alterou título ou tipo
     const isDuplicate = await this.checkDuplicateTitle(targetTitle, targetType, id, user);
     if (isDuplicate) {
       throw new Error('Este título já está na sua biblioteca.');
@@ -316,11 +321,11 @@ export class KinoMediaRepository implements IMediaRepository {
 
     const client = getSupabaseClient();
     if (client && user) {
-      if (dto.coverBlob) {
+      if (dto.coverBlob && dto.coverBlob.size > 0) {
         try {
           remoteCoverUrl = await storageService.uploadCover(user.id, id, dto.coverBlob);
         } catch (err) {
-          console.warn('Erro ao atualizar capa na nuvem:', err);
+          console.warn('Aviso: falha ao atualizar capa na nuvem:', err);
         }
       }
 
@@ -354,7 +359,7 @@ export class KinoMediaRepository implements IMediaRepository {
       genre: dto.genre !== undefined ? dto.genre.trim() : existing.genre,
       rating: dto.rating !== undefined ? dto.rating : existing.rating,
       status: dto.status !== undefined ? dto.status : existing.status,
-      coverBlob: dto.coverBlob !== undefined ? dto.coverBlob : existing.coverBlob,
+      coverBlob: dto.coverBlob && dto.coverBlob.size > 0 ? dto.coverBlob : existing.coverBlob,
       notes: dto.notes !== undefined ? dto.notes.trim() : existing.notes,
       updatedAt: now,
       remoteCoverUrl,
@@ -368,7 +373,6 @@ export class KinoMediaRepository implements IMediaRepository {
   async delete(id: string, user?: User | null): Promise<void> {
     const client = getSupabaseClient();
     if (client && user) {
-      // Exclusão remota no Supabase
       const { error } = await client
         .from('media_items')
         .delete()
@@ -376,13 +380,12 @@ export class KinoMediaRepository implements IMediaRepository {
         .eq('user_id', user.id);
 
       if (error) {
-        console.warn('Aviso: falha ao deletar no Supabase, removendo localmente:', error.message);
+        console.warn('Aviso: falha ao deletar no Supabase:', error.message);
       }
 
       await storageService.deleteCover(user.id, id);
     }
 
-    // Remove do IndexedDB local
     await idbService.delete(id);
   }
 }

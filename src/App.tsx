@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Clapperboard, Loader2, RefreshCw } from 'lucide-react';
 import type { CreateMediaDTO, MediaItem, UpdateMediaDTO } from './types/media';
 import { useMediaLibrary } from './hooks/useMediaLibrary';
@@ -18,7 +18,9 @@ import { AuthModal } from './components/AuthModal';
 import { SupabaseConfigModal } from './components/SupabaseConfigModal';
 
 export function App() {
-  const { user } = useAuth();
+  const { user, status: authStatus } = useAuth();
+  // Track the previous userId to detect genuine login transitions
+  const prevUserIdRef = useRef<string | null>(null);
   const {
     items,
     rawItems,
@@ -105,12 +107,20 @@ export function App() {
     }
   };
 
-  // Sincronização automática na montagem e mudança de usuário
+  // Sync ONCE when a new user session is detected (login event only, not token refresh)
   useEffect(() => {
-    if (user) {
-      syncNow().then(() => reload());
+    if (authStatus === 'initializing') return;
+
+    const currentId = user?.id ?? null;
+    const prevId = prevUserIdRef.current;
+
+    // Only sync when transitioning from no-user to a user (actual sign-in)
+    if (currentId && prevId === null) {
+      syncNow().then(() => reload()).catch(console.warn);
     }
-  }, [user, syncNow, reload]);
+
+    prevUserIdRef.current = currentId;
+  }, [user, authStatus, syncNow, reload]);
 
   return (
     <div className="min-h-screen min-h-[100dvh] flex flex-col bg-[#FBF6F6] text-[#1E080D]">

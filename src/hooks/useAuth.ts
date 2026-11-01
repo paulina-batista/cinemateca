@@ -1,45 +1,60 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { authService } from '../services/supabase/authService';
 import { isSupabaseConfigured } from '../services/supabase/client';
-import { syncService } from '../services/supabase/syncService';
 
-export function useAuth() {
+export type AuthStatus = 'initializing' | 'authenticated' | 'unauthenticated';
+
+export interface UseAuthResult {
+  user: User | null;
+  session: Session | null;
+  status: AuthStatus;
+  loading: boolean;
+  isConfigured: boolean;
+  signIn: (email: string, pass: string) => Promise<{ user: User | null; session: Session | null; error?: string | null }>;
+  signUp: (email: string, pass: string) => Promise<{ user: User | null; session: Session | null; error?: string | null }>;
+  signOut: () => Promise<void>;
+}
+
+export function useAuth(): UseAuthResult {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [status, setStatus] = useState<AuthStatus>('initializing');
   const isConfigured = isSupabaseConfigured();
+  // Prevent multiple simultaneous session resolutions
+  const initialized = useRef(false);
 
   useEffect(() => {
     if (!isConfigured) {
-      setLoading(false);
+      setStatus('unauthenticated');
       return;
     }
 
-    // Carrega a sessão inicial
+    // Avoid duplicate initialization on StrictMode double-invoke
+    if (initialized.current) return;
+    initialized.current = true;
+
+    // 1. Resolve the initial session synchronously from localStorage
     authService.getSession().then((initialSession) => {
       setSession(initialSession);
       setUser(initialSession?.user ?? null);
-      setLoading(false);
-
-      if (initialSession?.user) {
-        // Dispara sincronização inicial com a nuvem
-        syncService.syncNow();
-      }
+      setStatus(initialSession?.user ? 'authenticated' : 'unauthenticated');
     });
 
-    // Inscreve para mudanças no estado de login
-    const unsubscribe = authService.onAuthStateChange((_event, newSession) => {
+    // 2. Subscribe to future auth changes (token refresh, sign-in, sign-out)
+    //    We deliberately do NOT trigger a syncNow here to avoid reload loops.
+    //    Sync is triggered only on explicit user sign-in actions.
+    const unsubscribe = authService.onAuthStateChange((event, newSession) => {
+      // Ignore token refresh events to prevent reload loops
+      if (event === 'TOKEN_REFRESHED') return;
+
       setSession(newSession);
       setUser(newSession?.user ?? null);
-      setLoading(false);
-
-      if (newSession?.user) {
-        syncService.syncNow();
-      }
+      setStatus(newSession?.user ? 'authenticated' : 'unauthenticated');
     });
 
     return () => {
+      initialized.current = false;
       if (unsubscribe) unsubscribe();
     };
   }, [isConfigured]);
@@ -49,7 +64,7 @@ export function useAuth() {
     if (res.user) {
       setUser(res.user);
       setSession(res.session);
-      await syncService.syncNow();
+      setStatus('authenticated');
     }
     return res;
   }, []);
@@ -59,6 +74,7 @@ export function useAuth() {
     if (res.user) {
       setUser(res.user);
       setSession(res.session);
+      setStatus('authenticated');
     }
     return res;
   }, []);
@@ -67,12 +83,14 @@ export function useAuth() {
     await authService.signOut();
     setUser(null);
     setSession(null);
+    setStatus('unauthenticated');
   }, []);
 
   return {
     user,
     session,
-    loading,
+    status,
+    loading: status === 'initializing',
     isConfigured,
     signIn,
     signUp,

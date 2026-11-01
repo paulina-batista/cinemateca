@@ -3,9 +3,11 @@ import type { MediaItem, MediaType } from '../../types/media';
 import { DEFAULT_STATUS } from '../../types/media';
 import { base64ToBlob, blobToBase64 } from '../../utils/image';
 import { idbService } from '../db/indexedDB';
+import { getSupabaseClient } from '../supabase/client';
+import { storageService } from '../supabase/storageService';
 
 /**
- * Serviço responsável por gerar e restaurar backups independentes da biblioteca Kino.
+ * Serviço responsável por gerar e restaurar backups da biblioteca Kino.
  */
 export class BackupService {
   /**
@@ -16,11 +18,18 @@ export class BackupService {
 
     for (const item of items) {
       let coverBase64 = '';
-      try {
-        coverBase64 = await blobToBase64(item.coverBlob);
-      } catch (err) {
-        console.warn(`Aviso: falha ao converter capa de "${item.title}" para Base64:`, err);
-        coverBase64 = '';
+
+      // Se há blob local com conteúdo real, converte
+      if (item.coverBlob && item.coverBlob.size > 0) {
+        try {
+          coverBase64 = await blobToBase64(item.coverBlob);
+        } catch (err) {
+          console.warn(`Aviso: falha ao converter capa de "${item.title}" para Base64:`, err);
+        }
+      }
+      // Se não há blob mas há URL remota, usa a URL diretamente no backup
+      if (!coverBase64 && item.remoteCoverUrl) {
+        coverBase64 = item.remoteCoverUrl;
       }
 
       const itemType = (item.type === 'movie' || item.type === 'series') ? item.type : 'movie';
@@ -76,7 +85,7 @@ export class BackupService {
 
   /**
    * Valida a integridade, esquema e compatibilidade do arquivo de backup antes de aplicar.
-   * Suporta arquivos do formato atual (kino-backup v3) e dos formatos legados (iorhub-backup v2, cinemateca-backup v1).
+   * Suporta formatos: kino-backup v3, iorhub-backup v2, cinemateca-backup v1.
    */
   validateBackupFile(fileContent: string, currentItems: MediaItem[]): RestoreValidationResult {
     let parsed: unknown;
@@ -107,7 +116,6 @@ export class BackupService {
       return { valid: false, error: 'Lista de registros corrompida ou ausente no backup.' };
     }
 
-    // Validação de cada registro
     const validRatings = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
     const validTypes = ['movie', 'series', 'book', 'game'];
 
@@ -123,19 +131,18 @@ export class BackupService {
       if (!validTypes.includes(item.type)) {
         return {
           valid: false,
-          error: `O registro "${item.title}" possui um tipo inválido (${item.type}). Esperado: filme ou série.`,
+          error: `O registro "${item.title}" possui um tipo inválido (${item.type}).`,
         };
       }
 
       if (!validRatings.includes(item.rating)) {
         return {
           valid: false,
-          error: `O registro "${item.title}" possui nota inválida (${item.rating}). Permitido apenas de 0,5 a 5,0.`,
+          error: `O registro "${item.title}" possui nota inválida (${item.rating}). Permitido de 0,5 a 5,0.`,
         };
       }
     }
 
-    // Cálculo das estatísticas de mesclagem
     const existingIds = new Set(currentItems.map((it) => it.id));
     let conflictingCount = 0;
     let newCount = 0;
@@ -161,7 +168,8 @@ export class BackupService {
   }
 
   /**
-   * Executa a restauração no IndexedDB com base na estratégia escolhida pelo usuário.
+   * Executa a restauração com base na estratégia escolhida.
+   * Persiste no IndexedDB local E no Supabase (se autenticado).
    */
   async restoreBackup(
     backup: KinoBackup,
@@ -175,6 +183,31 @@ export class BackupService {
       existingMap.clear();
     }
 
+    const client = getSupabaseClient();
+    let userId: string | null = null;
+
+    if (client) {
+      try {
+        const { data: { user } } = await client.auth.getUser();
+        userId = user?.id ?? null;
+      } catch {
+        userId = null;
+      }
+    }
+
+    // Se replace-all e usuário autenticado: limpa registros remotos antes de importar
+    if (strategy === 'replace-all' && client && userId) {
+      try {
+        await client
+          .from('media_items')
+          .update({ deleted_at: new Date().toISOString() })
+          .eq('user_id', userId)
+          .is('deleted_at', null);
+      } catch (err) {
+        console.warn('[Kino Backup] Aviso: falha ao limpar registros remotos antes de restaurar:', err);
+      }
+    }
+
     let addedCount = 0;
     let updatedCount = 0;
 
@@ -185,36 +218,79 @@ export class BackupService {
         continue;
       }
 
+      // Converte capa: base64 → Blob, ou usa URL remota como fallback
       let coverBlob: Blob;
-      if (bItem.coverBase64) {
+      let remoteCoverUrl = '';
+
+      if (bItem.coverBase64 && bItem.coverBase64.startsWith('data:image/')) {
         try {
           coverBlob = await base64ToBlob(bItem.coverBase64);
         } catch {
           coverBlob = new Blob([], { type: 'image/jpeg' });
         }
+      } else if (bItem.coverBase64 && bItem.coverBase64.startsWith('http')) {
+        // URL remota salva no backup
+        remoteCoverUrl = bItem.coverBase64;
+        coverBlob = new Blob([], { type: 'image/webp' });
       } else {
         coverBlob = new Blob([], { type: 'image/jpeg' });
       }
 
-      const itemType = (bItem.type === 'movie' || bItem.type === 'series') ? bItem.type : 'movie';
+      const itemType: MediaType = (bItem.type === 'movie' || bItem.type === 'series')
+        ? bItem.type
+        : 'movie';
 
+      const now = new Date().toISOString();
+
+      // Se autenticado, persiste no Supabase primeiro
+      if (client && userId) {
+        try {
+          // Upload da capa se tiver blob real
+          if (coverBlob.size > 0) {
+            try {
+              remoteCoverUrl = await storageService.uploadCover(userId, bItem.id, coverBlob);
+            } catch {
+              remoteCoverUrl = remoteCoverUrl || '';
+            }
+          }
+
+          await client.from('media_items').upsert({
+            id: bItem.id,
+            user_id: userId,
+            title: bItem.title.trim(),
+            type: itemType,
+            genre: bItem.genre.trim(),
+            rating: bItem.rating,
+            status: bItem.status || DEFAULT_STATUS[itemType] || 'Assistido',
+            cover_url: remoteCoverUrl,
+            notes: bItem.notes || '',
+            created_at: bItem.createdAt || now,
+            updated_at: now,
+            deleted_at: null,
+          });
+        } catch (err) {
+          console.warn(`[Kino Backup] Aviso: falha ao persistir "${bItem.title}" no Supabase:`, err);
+        }
+      }
+
+      // Persiste no IndexedDB local
       const mediaItem: MediaItem = {
         id: bItem.id,
         title: bItem.title,
         type: itemType,
         genre: bItem.genre,
         rating: bItem.rating,
-        status: bItem.status || DEFAULT_STATUS[itemType as MediaType] || 'Assistido',
+        status: bItem.status || DEFAULT_STATUS[itemType] || 'Assistido',
         coverBlob,
-        coverUrl: '',
         notes: bItem.notes || '',
-        createdAt: bItem.createdAt || new Date().toISOString(),
-        updatedAt: bItem.updatedAt || new Date().toISOString(),
-        syncedWithSupabase: false,
-        remoteId: null,
+        createdAt: bItem.createdAt || now,
+        updatedAt: now,
+        syncedWithSupabase: Boolean(client && userId),
+        remoteId: client && userId ? bItem.id : null,
+        remoteCoverUrl,
       };
 
-      await idbService.save(mediaItem);
+      await idbService.put(mediaItem);
 
       if (exists) {
         updatedCount++;
