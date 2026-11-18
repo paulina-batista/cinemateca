@@ -1,6 +1,6 @@
 # 🎬 Kino — Curadoria Pessoal de Arte e Mídias
 
-Aplicação cinematográfica e refinada para catalogar filmes e séries, com estética inspirada no **Google Stitch**, sincronização em nuvem via **Supabase**, prevenção nativa de títulos duplicados, cartazes em alta resolução e experiência responsiva otimizada para celular (3 cartazes por linha) e desktop.
+Aplicação cinematográfica e refinada para catalogar filmes e séries, com estética gerada no **Google Stitch** e adaptada, sincronização em nuvem via **Supabase**, prevenção nativa de títulos duplicados, cartazes em alta resolução e experiência responsiva otimizada para celular (3 cartazes por linha) e desktop.
 
 ---
 
